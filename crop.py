@@ -15,36 +15,36 @@ configRoot = configHandler.getroot()
 
 class reference():
     def __init__(self, var):
-        """ Az osztály definiáláskor a megadott érték hozzárendelése a változóhoz """
+        """ Initializing the variable, when you define the class"""
         self.var = var
         
     def get(self):
-        """ Változó értékének lekérése """
+        """ Get the value of the variable """
         return self.var
         
     def set(self, var):
-        """ Változó értéknek módosítása """
+        """ Set he value of the variable """
         self.var = var
 
 class dropbox(session.DropboxSession):
     def link(self, token):
-        """ Új link létrehozása a Dropbox és a JamCrop között """
+        """ Create a new link between Dropbox and JamCrop """
         self.obtain_access_token(token)
         configRoot.find('token').text = "|".join([self.token.key, self.token.secret])
         
     def auth(self):
-        """ Link kérése a Dropboxtól """
+        """ Get the verification link from Dropbox """
         token = self.obtain_request_token()
         webbrowser.open(self.build_authorize_url(token))
         return(token)
 
     def unlink(self):
-        """ A jelenlegi link törlése """
+        """ Unlink the JamCrop from Dropbox """
         configRoot.find('token').text = None
         session.DropboxSession.unlink(self)
         
     def load(self):
-        """ Mentett link betöltése """
+        """ Load the saved link from token """
         if(configRoot.find('token').text != None):
             try:
                 self.set_token(*configRoot.find('token').text.split('|'))
@@ -54,7 +54,7 @@ class dropbox(session.DropboxSession):
         
 class window():
     def entry(self, root, x, y, w, default, var = None, text = None):
-        """ Új entry létrehozása - @var: StringVar, @text: String """
+        """ Create a new entry (@var: StringVar; @text: String;) """
         if(var != None): entry = Tkinter.Entry(root, textvariable = var, width = w)
         elif(text != None): entry = Tkinter.Entry(root, text = text, width = w)
         if(default != None): entry.insert(0, default)
@@ -62,77 +62,88 @@ class window():
         return(entry)
         
     def label(self, root, x, y, text):
-        """ Új label létrehozása """
+        """ Create a new label """
         label = Tkinter.Label(root, text = text)
         label.place(x = x, y = y)
         return(label)
         
     def button(self, root, x, y, w, var = None, text = None):
-        """ Új gomb létrehozása """
+        """ Create a new button (@var: StringVar; @text: String;) """
         if(var != None): button = Tkinter.Button(root, textvariable = var, width = w)
         elif(text != None): button = Tkinter.Button(root, text = text, width = w)
         button.place(x = x, y = y)
         return(button)
         
     def menu(self, root, x, y, w, var, values):
-        """ Új menü létrehozása """
+        """ Create a new menu (@var: StringVar; @values: Array;) """
         menu = apply(Tkinter.OptionMenu, (root, var) + tuple(values))
         menu.config(width = w)
         menu.place(x = x, y = y)
         return(menu)
         
     def check(self, root, x, y, var, on, off):
-        """ Csekkoló gomb létrehozása """
+        """ Create a new checkbox """
         check = Tkinter.Checkbutton(root, variable = var, offvalue = off, onvalue = on)
         check.place(x = x, y = y)
         return(check)
         
 class configWindow(Tkinter.Toplevel, window):
     def __init__(self, parent, session, status = reference(0)):
-        """ Beállítások ablak megjelenítése (és változóinak iniciálása) """
-        Tkinter.Toplevel.__init__(self, parent, width = 195, height = 85)
+        """ Initializing the config windows """
+        Tkinter.Toplevel.__init__(self, parent, width = 195, height = 110)
         self.protocol('WM_DELETE_WINDOW', lambda: self.deleteEvent(status))
         self.resizable(width = 'false', height = 'false')
         self.attributes('-toolwindow', 1)
         self.wm_attributes("-topmost", 1)
-        self.title(u"Beállítások")
+        self.title(u"Configuration")
         self.wm_iconbitmap(ICON)
         
-        # URL automatikus másolását vezérlő check gomb létrehozása
-        self.label(self, 5, 5, "URL automatikus másolása:")
+        # Create the automatic url copy checkbox
+        self.label(self, 5, 5, "Automatic URL copy:")
         copyValue = Tkinter.StringVar()
         copyCheck = self.check(self, 172, 5, copyValue, 'true', 'false')
         copyValue.trace(mode = 'w', callback = lambda varName, elementName, mode: self.setCopy(varName, elementName, mode, copyValue))
         if(configRoot.find('copy').text == 'false'): copyCheck.deselect()
+		
+        # Create the browser behavor checkbox
+        self.label(self, 5, 30, "Open in the browser:")
+        shortValue = Tkinter.StringVar()
+        shortCheck = self.check(self, 172, 30, shortValue, 'true', 'false')
+        shortValue.trace(mode = 'w', callback = lambda varName, elementName, mode: self.setBrowser(varName, elementName, mode, shortValue))
+        if(configRoot.find('browser').text == 'false'): shortCheck.deselect()
         
-        # Képformátumokat tartalmazó lista létrehozása
-        self.label(self, 5, 30, "Képformátum:")
+        # Create the list of image formats
+        self.label(self, 5, 55, "Image format:")
         formatValue = Tkinter.StringVar()
         formatValue.set(configRoot.find('format').text)
-        formatMenu = self.menu(self, 93, 25, 9, formatValue, ['jpg', 'png', 'gif'])
+        formatMenu = self.menu(self, 93, 50, 9, formatValue, ['jpg', 'png', 'gif'])
         formatValue.trace(mode = 'w', callback = lambda varName, elementName, mode: self.setFormat(varName, elementName, mode, formatValue))
         
-        # Leválasztást végrehajtó gomb létrehozása
-        button = self.button(self, 5, 55, 25, text = "JamCrop leválasztása")
+        # Create the button for unlink the applcation
+        button = self.button(self, 5, 80, 25, text = "Unlink JamCrop")
         button.bind("<Button-1>", lambda event: self.doUnlink(event, parent, session))
         
         status.set(1)
         
     def deleteEvent(self, status):
-        """ Ablak bezárását végrehajtó függvény """
+        """ Configuration window closing function """
         status.set(0)
         self.destroy()
         
     def setCopy(self, varName, elementName, mode, value):
-        """ URL másolás beállításának módosítása """
+        """ Set the url copy paramter """
         configRoot.find('copy').text = unicode(value.get())
         
+    def setBrowser(self, varName, elementName, mode, value):
+        """ Set the browser parameter """
+        configRoot.find('browser').text = unicode(value.get())
+        
     def setFormat(self, varName, elementName, mode, value):
-        """ Azonosító módosítása """
+        """ Change the format parameter """
         configRoot.find('format').text = unicode(value.get())
         
     def doUnlink(self, event, parent, session):
-        """ JamCrop lecsatlakoztatása és a főablak bezárása """
+        """ Unlink JamCrop from Dropbox, and close the windows """
         session.unlink()
         parent.deleteEvent()
         
@@ -142,7 +153,7 @@ class grabWindow(Tkinter.Tk):
     square, session = None, None
 
     def __init__(self): 
-        """ A főablak megjelenítése és változóinak iniciálása """
+        """ Initializing the grab windows of the application """
         Tkinter.Tk.__init__(self)
         self.protocol('WM_DELETE_WINDOW', self.deleteEvent)
         self.configure(background = 'white')
@@ -161,7 +172,7 @@ class grabWindow(Tkinter.Tk):
             self.withdraw()
             
             token = self.session.auth()
-            if(tkMessageBox.askokcancel(title = "JamCrop", message = "A JamCrop működéséhez, szüksége van egy korlátozott Dropbox hozzáférésre. Amennyiben engedélyezted a kapcsolódását a Dropboxhoz az automatikusan megnyílt oldalon, kattintás az OK-ra.\n\nA beállítások ablakot az összekapcsolás után, az F1 billentyű megnyomásával érheted el.")):
+            if(tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop require a limited Dropbox access for itself. If you allowed the connection to the Dropbox, from the recently appeared browser window, please click on the OK button. After the grab windows have shown, you can open the configuration windows by pressing the F1 button.")):
                 try: self.session.link(token)
                 except: return
             else: return
@@ -170,12 +181,12 @@ class grabWindow(Tkinter.Tk):
             self.deiconify()
         
     def deleteEvent(self):
-        """ A főblak bezárását végrehajtó függvény. """
+        """ Closing function for the grab window """
         configHandler.write(CONFIG)
         self.destroy()
     
     def autoFocus(self):
-        """ Főablak automatikus felemelése - 250 msenként """
+        """ Automatic focus for the grab window """
         if(self.disabled.get()):
             self.wm_attributes("-topmost", 0)
         else:
@@ -185,7 +196,7 @@ class grabWindow(Tkinter.Tk):
         self.after(250, self.autoFocus)
     
     def keyPress(self, event):
-        """ Billentyűleütések feldolgozásáért felelős függvény """
+        """ Parse the key presses """
         if(event.keysym == 'Escape'):
             self.deleteEvent()
         elif(event.keysym == 'F1' and not self.disabled.get()):
@@ -193,7 +204,7 @@ class grabWindow(Tkinter.Tk):
             config.mainloop()
 
     def drawSquare(self, event):
-        """ Kijelölő négyzet kirajzolása grafikusan az adott egérpozíció alapján. """
+        """ Draw the selecting square on to the grab window """
         if(self.x < event.x_root and self.y < event.y_root):
             self.square.config(width = event.x_root-self.x, height = event.y_root-self.y)
             self.square.place(x = self.x, y = self.y)
@@ -210,7 +221,7 @@ class grabWindow(Tkinter.Tk):
             self.square.place_forget()
     
     def click(self, event):
-        """ Leendő képernyőkép koordinátáinak kijelöléséért felelős függvény. """
+        """ Set the coordinates of the screenshot """
         if(not self.disabled.get() and not self.last):
             self.bind("<Motion>", self.drawSquare)
             self.x = event.x_root
@@ -231,7 +242,7 @@ class grabWindow(Tkinter.Tk):
                 self.last = 0;
        
     def grab(self, x1, y1, x2, y2):
-        """ Képernyőkép elkészítése a megadott koordináták alapján """
+        """ Create the screenshot from the coordinates """
         self.withdraw()
         connection = client.DropboxClient(self.session)
         
@@ -239,10 +250,10 @@ class grabWindow(Tkinter.Tk):
         ImageGrab.grab((x1, y1, x2, y2)).save(fileName)
         connection.put_file(fileName, open(os.path.expanduser(fileName), "rb"))
         os.unlink(fileName)
-        
         result = connection.share(fileName)
-        webbrowser.open(result['url'])
         
+        if(configRoot.find('browser').text == 'true'):
+			webbrowser.open(result['url'])
         if(configRoot.find('copy').text == 'true'):
             self.clipboard_clear()
             self.clipboard_append(result['url'])
