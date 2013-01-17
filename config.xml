@@ -1,5 +1,6 @@
 <config>
-    <token/>
+    <token />
     <format>jpg</format>
-    <copy>true</copy>
+    <copy>false</copy>
+    <browser>false</browser>
 </config>
