@@ -27,16 +27,16 @@ class reference():
         self.var = var
 
 class dropbox(session.DropboxSession):
+    def verify(self):
+        """ Get the verification link and the token from Dropbox """
+        token = self.obtain_request_token()
+        webbrowser.open(self.build_authorize_url(token))
+        return(token)
+        
     def link(self, token):
         """ Create a new link between Dropbox and JamCrop """
         self.obtain_access_token(token)
         configRoot.find('token').text = "|".join([self.token.key, self.token.secret])
-        
-    def auth(self):
-        """ Get the verification link from Dropbox """
-        token = self.obtain_request_token()
-        webbrowser.open(self.build_authorize_url(token))
-        return(token)
 
     def unlink(self):
         """ Unlink the JamCrop from Dropbox """
@@ -171,7 +171,7 @@ class grabWindow(Tkinter.Tk):
         if(not self.session.load()):
             self.withdraw()
             
-            token = self.session.auth()
+            token = self.session.verify()
             if(tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop require a limited Dropbox access for itself. If you allowed the connection to the Dropbox, from the recently appeared browser window, please click on the OK button. After the grab windows have shown, you can open the configuration windows by pressing the F1 button.")):
                 try: self.session.link(token)
                 except: return
