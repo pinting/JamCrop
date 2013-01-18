@@ -3,4 +3,5 @@
     <format>jpg</format>
     <copy>false</copy>
     <browser>false</browser>
+    <tooltip>false</tooltip>
 </config>
