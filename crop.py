@@ -276,15 +276,15 @@ class grabWindow(Tkinter.Tk):
         os.unlink(fileName)
         result = connection.share(fileName)
         
-        if(config.getroot().find('tooltip').text == 'true'):
-            alert = tooltip(self, "The uploading is completed", 2000)
-            alert.geometry("%dx%d%+d%+d" % (160, 25, self.winfo_screenwidth()-160, 0))
-            alert.mainloop()
         if(config.getroot().find('copy').text == 'true'):
             self.clipboard_clear()
             self.clipboard_append(result['url'])
         if(config.getroot().find('browser').text == 'true'):
 			webbrowser.open(result['url'])
+        if(config.getroot().find('tooltip').text == 'true'):
+            alert = tooltip(self, "The uploading is completed", 2500)
+            alert.geometry("%dx%d%+d%+d" % (160, 25, self.winfo_screenwidth()-160, 0))
+            alert.mainloop()
         
         self.deleteEvent()
 
