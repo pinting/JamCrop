@@ -5,7 +5,7 @@ SERVER = 'jamcropxy.appspot.com'
 CONFIG = 'config.xml'
 ICON = 'icon.ico'
 
-import Tkinter, xml.etree.ElementTree as xml, time, os, webbrowser, tkMessageBox, urllib, urllib2, urlparse
+import Tkinter, xml.etree.ElementTree as xml, time, os, webbrowser, tkMessageBox, urllib, urllib2, urlparse, json
 from poster.streaminghttp import register_openers
 from poster.encode import multipart_encode
 from pil import ImageGrab
@@ -30,33 +30,43 @@ class dropbox():
     access_token = None
         
     def authorize(self):
-        """ Get the verification link from Dropbox """
+        """ Get a request token from the server """
         result = urllib2.urlopen('https://%s/authorize' % SERVER)
         self.request_token = dict(urlparse.parse_qsl(result.read()))
         return(self.request_token)
     
     def access(self):
-        """ Create a new link between Dropbox and JamCrop """
+        """ Get an access token with the request token """
         result = urllib2.urlopen('%s?%s' % ('https://%s/access' % SERVER, urllib.urlencode(self.request_token)))
         self.access_token = dict(urlparse.parse_qsl(result.read()))
+        config.getroot().find('token').text = urllib.urlencode(self.access_token)
         return(self.access_token)
 
+    def load(self):
+        """ Load the previously saved access token """
+        if(config.getroot().find('token').text != None):
+            self.access_token = dict(urlparse.parse_qsl(config.getroot().find('token').text))
+            return True
+        else: return False
+
     def unlink(self):
-        """ Unlink the JamCrop from Dropbox """
+        """ Delete every token from the memory and from the config """
         config.getroot().find('token').text = None
         self.request_token = None
         self.access_token = None
 
     def upload(self, file):
+        """ Upload a file to the server """
         datagen, headers = multipart_encode({'body': open(file, 'rb')})
         request = urllib2.Request('%s?%s' % ('https://%s/upload' % SERVER, 
                                   urllib.urlencode(dict(self.access_token.items() + dict({'name' : file}).items()))), datagen, headers)
-        return(urllib2.urlopen(request))
+        return(json.loads(urllib2.urlopen(request).read()))
 
     def share(self, file, short = 'false'):
+        """ Get a link of the previously uploaded file """
         request = urllib2.Request('%s?%s' % ('https://%s/share' % SERVER, 
                                   urllib.urlencode(dict(self.access_token.items() + dict({'name' : file, 'short' : short}).items()))))
-        return(urllib2.urlopen(request))
+        return(json.loads((urllib2.urlopen(request)).read()))
         
 class window():
     def entry(self, root, x, y, w, default, var = None, text = None):
@@ -65,37 +75,37 @@ class window():
         elif(text != None): entry = Tkinter.Entry(root, text = text, width = w)
         if(default != None): entry.insert(0, default)
         entry.place(x = x, y = y)
-        return(entry)
+        return entry
         
     def label(self, root, x, y, text):
         """ Create a new label """
         label = Tkinter.Label(root, text = text)
         label.place(x = x, y = y)
-        return(label)
+        return label
         
     def button(self, root, x, y, w, var = None, text = None):
         """ Create a new button (@var: StringVar; @text: String;) """
         if(var != None): button = Tkinter.Button(root, textvariable = var, width = w)
         elif(text != None): button = Tkinter.Button(root, text = text, width = w)
         button.place(x = x, y = y)
-        return(button)
+        return button
         
     def menu(self, root, x, y, w, var, values):
         """ Create a new menu (@var: StringVar; @values: Array;) """
         menu = apply(Tkinter.OptionMenu, (root, var) + tuple(values))
         menu.config(width = w)
         menu.place(x = x, y = y)
-        return(menu)
+        return menu
         
     def check(self, root, x, y, var, on, off):
         """ Create a new checkbox """
         check = Tkinter.Checkbutton(root, variable = var, offvalue = off, onvalue = on)
         check.place(x = x, y = y)
-        return(check)
+        return check
         
 class tooltip(Tkinter.Toplevel, window):
     def __init__(self, parent, message, timeout = 1500):
-        """ Initializing the config window """
+        """ Initializing a tooltip window """
         Tkinter.Toplevel.__init__(self, parent, bg = 'black')
         self.overrideredirect(1)
         self.geometry("%dx%d%+d%+d" % (128, 24, self.winfo_screenwidth()-128, 0))
@@ -183,7 +193,8 @@ class configWindow(Tkinter.Toplevel, window):
 class grabWindow(Tkinter.Tk):
     disabled = reference(0)
     x, y, last = 0, 0, 0
-    square, session = None, None
+    session = None
+    square = None
 
     def __init__(self): 
         """ Initializing the grab window of the application """
@@ -201,15 +212,14 @@ class grabWindow(Tkinter.Tk):
         self.square = Tkinter.Canvas(self, width = 0, height = 0, bg = 'black')
         
         self.withdraw()
-        
         self.session = dropbox()
-        request_token = self.session.authorize()
-        webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize", urllib.urlencode({'oauth_token' : request_token['oauth_token']})))
         
-        if(tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop require a limited Dropbox access for itself. If you allowed the connection to the Dropbox, from the recently appeared browser window, please click on the OK button. After the grab window have shown, you can open the configuration window by pressing the F1 button.")):
-            try: self.session.access()
-            except: return
-        else: return
+        if(not self.session.load()):
+            request_token = self.session.authorize()
+            webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize", urllib.urlencode({'oauth_token' : request_token['oauth_token']})))
+            
+            if(tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop require a limited Dropbox access for itself. If you allowed the connection to the Dropbox, from the recently appeared browser window, please click on the OK button. After the grab window have shown, you can open the configuration window by pressing the F1 button.")): self.session.access()
+            else: return
         
         self.update()
         self.deiconify()
@@ -283,7 +293,7 @@ class grabWindow(Tkinter.Tk):
         ImageGrab.grab((x1, y1, x2, y2)).save(fileName)
         self.session.upload(fileName)
         os.unlink(fileName)
-        result = self.session.share(fileName)
+        result = self.session.share(fileName, 'true')
         
         if(config.getroot().find('copy').text == 'true'):
             self.clipboard_clear()
