@@ -1,7 +1,7 @@
 <config>
-    <browser>true</browser>
+    <browser>false</browser>
     <tooltip>true</tooltip>
     <format>jpg</format>
-    <copy>false</copy>
+    <copy>true</copy>
     <token>oauth_token_secret=at57z5l2m68wfxp&amp;oauth_token=fpl86vil7ciw84p&amp;uid=4213669</token>
 </config>
