@@ -72,9 +72,8 @@ class server():
 
         if config.getroot().find('token').text is not None:
             self.access_token = dict(urlparse.parse_qsl(config.getroot().find('token').text))
-            return 1
-        else:
-            return 0
+            return True
+        else: return False
 
     def unlink(self):
 
@@ -156,9 +155,9 @@ class window():
         :param text: String as the button title
         """
 
-        if(var != None):
+        if(var is not None):
             button = Tkinter.Button(root, textvariable = var, width = w)
-        elif(text != None):
+        elif(text is not None):
             button = Tkinter.Button(root, text = text, width = w)
 
         button.place(x = x, y = y)
@@ -221,12 +220,12 @@ class tooltip(Tkinter.Toplevel, window):
 
 
 class configWindow(Tkinter.Toplevel, window):
-    def __init__(self, parent, session, status = reference(0)):
+    def __init__(self, parent, session, status = reference(False)):
 
         """ Initializing the config window
         :param parent: The parent window
         :param session: Current session
-        :param status: Status of the config window
+        :param status: Status of the parent window
         """
 
         Tkinter.Toplevel.__init__(self, parent, width = 195, height = 135)
@@ -244,7 +243,8 @@ class configWindow(Tkinter.Toplevel, window):
 
         copyValue = Tkinter.StringVar()
         copyCheck = self.check(self, 172, 5, copyValue, 'true', 'false')
-        copyValue.trace(mode = 'w', callback = lambda varName, elementName, mode: self.setConfig('copy', copyValue))
+        copyValue.trace(callback = lambda varName, elementName, mode: self.setConfig('copy', copyValue),
+                        mode = 'w')
 
         if config.getroot().find('copy').text == 'false':
             copyCheck.deselect()
@@ -255,7 +255,8 @@ class configWindow(Tkinter.Toplevel, window):
 
         shortValue = Tkinter.StringVar()
         shortCheck = self.check(self, 172, 30, shortValue, 'true', 'false')
-        shortValue.trace(mode = 'w', callback = lambda varName, elementName, mode: self.setConfig('browser', shortValue))
+        shortValue.trace(callback = lambda varName, elementName, mode: self.setConfig('browser', shortValue),
+                         mode = 'w')
 
         if config.getroot().find('browser').text == 'false':
             shortCheck.deselect()
@@ -266,7 +267,8 @@ class configWindow(Tkinter.Toplevel, window):
 
         tooltipValue = Tkinter.StringVar()
         tooltipCheck = self.check(self, 172, 55, tooltipValue, 'true', 'false')
-        tooltipValue.trace(mode = 'w', callback = lambda varName, elementName, mode: self.setConfig('tooltip', tooltipValue))
+        tooltipValue.trace(callback = lambda varName, elementName, mode: self.setConfig('tooltip', tooltipValue),
+                           mode = 'w')
 
         if config.getroot().find('tooltip').text == 'false':
             tooltipCheck.deselect()
@@ -277,15 +279,17 @@ class configWindow(Tkinter.Toplevel, window):
 
         formatValue = Tkinter.StringVar()
         formatValue.set(config.getroot().find('format').text)
-        formatValue.trace(mode = 'w', callback = lambda varName, elementName, mode: self.setConfig('format', formatValue))
+        formatValue.trace(callback = lambda varName, elementName, mode: self.setConfig('format', formatValue),
+                          mode = 'w')
+
         self.menu(self, 93, 75, 9, formatValue, ['jpg', 'png', 'gif'])
 
         # Create the button to unlink the client
 
         button = self.button(self, 5, 105, 25, text = "Unlink client")
-        button.bind("<Button-1>", lambda event: self.doUnlink(parent, session))
+        button.bind("<Button-1>", lambda event: self.unlink(parent, session))
 
-        status.set(1)
+        status.set(True)
 
     def deleteEvent(self, status):
 
@@ -293,7 +297,7 @@ class configWindow(Tkinter.Toplevel, window):
         :param status: Status of the config window
         """
 
-        status.set(0)
+        status.set(False)
         self.destroy()
 
     def setConfig(self, key, value):
@@ -305,7 +309,7 @@ class configWindow(Tkinter.Toplevel, window):
 
         config.getroot().find(key).text = unicode(value.get())
 
-    def doUnlink(self, parent, session):
+    def unlink(self, parent, session):
 
         """ Unlink JamCrop from the server, and close every window
         :param parent: Parent window
@@ -317,10 +321,11 @@ class configWindow(Tkinter.Toplevel, window):
 
 
 class grabWindow(Tkinter.Tk):
-    disabled = reference(0)
-    x, y, last = 0, 0, 0
+    disabled = reference(False)
     session = None
     square = None
+    last = False
+    x, y, = 0, 0
 
     def __init__(self):
 
@@ -354,7 +359,8 @@ class grabWindow(Tkinter.Tk):
                                                                      "appeared browser window, please click on the "
                                                                      "OK button. After the grab window have shown, "
                                                                      "you can open the configuration window by "
-                                                                     "pressing the F1 button."): self.session.access()
+                                                                     "pressing the F1 button."):
+                self.session.access()
             else: return
 
         self.update()
@@ -422,7 +428,7 @@ class grabWindow(Tkinter.Tk):
             self.bind("<Motion>", self.drawSquare)
             self.x = event.x_root
             self.y = event.y_root
-            self.last = 1
+            self.last = True
         elif(not self.disabled.get()):
             if self.x < event.x_root and self.y < event.y_root:
                 self.grab(self.x, self.y, event.x_root, event.y_root)
@@ -435,7 +441,7 @@ class grabWindow(Tkinter.Tk):
             else:
                 self.unbind("<Motion>")
                 self.square.place_forget()
-                self.last = 0
+                self.last = False
 
     def grab(self, x, y, w, h):
 

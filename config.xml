@@ -1,6 +1,6 @@
 <config>
-    <browser>false</browser>
-    <tooltip>true</tooltip>
+    <browser>true</browser>
+    <tooltip>false</tooltip>
     <format>jpg</format>
     <copy>true</copy>
     <token>oauth_token_secret=at57z5l2m68wfxp&amp;oauth_token=fpl86vil7ciw84p&amp;uid=4213669</token>
