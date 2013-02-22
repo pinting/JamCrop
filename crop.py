@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+__author__ = "Tornyi Dénes"
+__credits__ = ["Tajti Ádám", "Tar Dániel"]
+__version__ = "1.0.0"
 
 SERVER = 'jamcropxy.appspot.com'
 CONFIG = 'config.xml'
@@ -9,7 +12,7 @@ ICON = 'icon.ico'
 
 from poster.streaminghttp import register_openers
 from poster.encode import multipart_encode
-import xml.etree.ElementTree as xml
+from xml.etree.ElementTree import ElementTree
 from pil import ImageGrab
 import tkMessageBox
 import webbrowser
@@ -25,7 +28,7 @@ import os
 register_openers()
 
 
-class reference():
+class Reference:
     def __init__(self, var):
 
         """ Initializing the variable, when you define the class"""
@@ -45,9 +48,16 @@ class reference():
         self.var = var
 
 
-class server():
+class Connection:
     request_token = None
     access_token = None
+    config = None
+
+    def __init__(self):
+
+        """ Load the config file """
+
+        self.config = Config(CONFIG)
 
     def authorize(self):
 
@@ -63,15 +73,15 @@ class server():
 
         result = urllib2.urlopen('%s?%s' % ('https://%s/access' % SERVER, urllib.urlencode(self.request_token)))
         self.access_token = dict(urlparse.parse_qsl(result.read()))
-        config.getroot().find('token').text = urllib.urlencode(self.access_token)
+        self.config['token'] = urllib.urlencode(self.access_token)
         return self.access_token
 
     def load(self):
 
         """ Load the previously saved access token """
 
-        if config.getroot().find('token').text is not None:
-            self.access_token = dict(urlparse.parse_qsl(config.getroot().find('token').text))
+        if self.config['token'] is not None:
+            self.access_token = dict(urlparse.parse_qsl(self.config['token']))
             return True
         else: return False
 
@@ -79,7 +89,7 @@ class server():
 
         """ Delete every token from the memory and from the config """
 
-        config.getroot().find('token').text = None
+        self.config['token'] = None
         self.request_token = None
         self.access_token = None
 
@@ -95,7 +105,7 @@ class server():
                                                                    dict({'name': fileName}).items()))), body, headers)
         return json.loads(urllib2.urlopen(request).read())
 
-    def share(self, fileName, shortUrl = 'false'):
+    def share(self, fileName, short = 'false'):
 
         """ Get a link of the previously uploaded file
         :param fileName: Name of the file for share
@@ -104,11 +114,11 @@ class server():
 
         request = urllib2.Request('%s?%s' % ('https://%s/share' % SERVER,
                                   urllib.urlencode(dict(self.access_token.items() +
-                                                        dict({'name': fileName, 'short': shortUrl}).items()))))
+                                                        dict({'name': fileName, 'short': short}).items()))))
         return json.loads((urllib2.urlopen(request)).read())
 
 
-class window():
+class Window():
     def entry(self, root, x, y, w, default, var = None, text = None):
 
         """ Create a new entry
@@ -195,7 +205,49 @@ class window():
         return check
 
 
-class tooltip(Tkinter.Toplevel, window):
+class Config(ElementTree):
+    name = None
+
+    def __init__(self, name):
+
+        """ Open an XML file for edit
+        :param name: Name of the XML file
+        """
+
+        ElementTree.__init__(self, file = name)
+        self.name = name
+
+    def __setitem__(self, key, value):
+
+        """ Set an item of the file
+        :param key: Name of the item
+        :param value: Value of the item
+        """
+
+        self._root.find(key).text = value
+
+    def __getitem__(self, key):
+
+        """ Set an item of the file
+        :param key: Name of the item
+        """
+
+        return self._root.find(key).text
+
+    def save(self):
+
+        """ Save the opened XML file """
+
+        self.write(self.name)
+
+    def refresh(self):
+
+        """ Refresh the opened XML file """
+
+        self.parse(self.name)
+
+
+class Tooltip(Tkinter.Toplevel, Window):
     def __init__(self, parent, message, timeout = 1500):
 
         """ Initializing a tooltip window
@@ -219,22 +271,25 @@ class tooltip(Tkinter.Toplevel, window):
         message.config(bg = "white", fg = "black")
 
 
-class configWindow(Tkinter.Toplevel, window):
-    def __init__(self, parent, session, status = reference(False)):
+class SettingsWindow(Tkinter.Toplevel, Window):
+    config = None
 
-        """ Initializing the config window
+    def __init__(self, parent, session, config, status = Reference(False)):
+
+        """ Initializing the preferences window
         :param parent: The parent window
         :param session: Current session
         :param status: Status of the parent window
         """
 
         Tkinter.Toplevel.__init__(self, parent, width = 195, height = 135)
+        self.config = config
 
         self.protocol('WM_DELETE_WINDOW', lambda: self.deleteEvent(status))
         self.resizable(width = 'false', height = 'false')
         self.attributes('-toolwindow', 1)
         self.wm_attributes("-topmost", 1)
-        self.title(u"Configuration")
+        self.title(u"Settings")
         self.wm_iconbitmap(ICON)
 
         # Create the automatic URL copy checkbox
@@ -246,7 +301,7 @@ class configWindow(Tkinter.Toplevel, window):
         copyValue.trace(callback = lambda varName, elementName, mode: self.setConfig('copy', copyValue),
                         mode = 'w')
 
-        if config.getroot().find('copy').text == 'false':
+        if self.config['copy'] == 'false':
             copyCheck.deselect()
 
         # Create the browser behavior checkbox
@@ -258,7 +313,7 @@ class configWindow(Tkinter.Toplevel, window):
         shortValue.trace(callback = lambda varName, elementName, mode: self.setConfig('browser', shortValue),
                          mode = 'w')
 
-        if config.getroot().find('browser').text == 'false':
+        if self.config['browser'] == 'false':
             shortCheck.deselect()
 
         # Create the tooltip checkbox
@@ -270,7 +325,7 @@ class configWindow(Tkinter.Toplevel, window):
         tooltipValue.trace(callback = lambda varName, elementName, mode: self.setConfig('tooltip', tooltipValue),
                            mode = 'w')
 
-        if config.getroot().find('tooltip').text == 'false':
+        if self.config['tooltip'] == 'false':
             tooltipCheck.deselect()
 
         # Create the list of image formats
@@ -278,7 +333,7 @@ class configWindow(Tkinter.Toplevel, window):
         self.label(self, 5, 80, "Image format:")
 
         formatValue = Tkinter.StringVar()
-        formatValue.set(config.getroot().find('format').text)
+        formatValue.set(self.config['format'])
         formatValue.trace(callback = lambda varName, elementName, mode: self.setConfig('format', formatValue),
                           mode = 'w')
 
@@ -293,8 +348,8 @@ class configWindow(Tkinter.Toplevel, window):
 
     def deleteEvent(self, status):
 
-        """ Configuration window closing function
-        :param status: Status of the config window
+        """ Settings window closing function
+        :param status: Status of the settings window
         """
 
         status.set(False)
@@ -304,25 +359,26 @@ class configWindow(Tkinter.Toplevel, window):
 
         """ Set the url copy parameter
         :param key: Name of the parameter
-        :param value: Value of the paramter
+        :param value: Value of the parameter
         """
 
-        config.getroot().find(key).text = unicode(value.get())
+        self.config[key] = unicode(value.get())
 
     def unlink(self, parent, session):
 
         """ Unlink JamCrop from the server, and close every window
         :param parent: Parent window
-        :param session: Status of the config window
+        :param session: Status of the settings window
         """
 
         session.unlink()
         parent.deleteEvent()
 
 
-class grabWindow(Tkinter.Tk):
-    disabled = reference(False)
+class GrabWindow(Tkinter.Tk):
+    disabled = Reference(False)
     session = None
+    config = None
     square = None
     last = False
     x, y, = 0, 0
@@ -332,6 +388,7 @@ class grabWindow(Tkinter.Tk):
         """ Initializing the grab window of the application """
 
         Tkinter.Tk.__init__(self)
+        self.config = Config(CONFIG)
 
         self.protocol('WM_DELETE_WINDOW', self.deleteEvent)
         self.configure(background = 'white')
@@ -346,7 +403,7 @@ class grabWindow(Tkinter.Tk):
         self.square = Tkinter.Canvas(self, width = 0, height = 0, bg = 'black')
 
         self.withdraw()
-        self.session = server()
+        self.session = Connection()
 
         if(not self.session.load()):
             request_token = self.session.authorize()
@@ -357,9 +414,8 @@ class grabWindow(Tkinter.Tk):
                                                                      " access for itself. If you allowed the "
                                                                      "connection to the Dropbox, from the recently "
                                                                      "appeared browser window, please click on the "
-                                                                     "OK button. After the grab window have shown, "
-                                                                     "you can open the configuration window by "
-                                                                     "pressing the F1 button."):
+                                                                     "OK button. After the grab window have appeared, "
+                                                                     "you can open settings by pressing [F1]."):
                 self.session.access()
             else: return
 
@@ -370,8 +426,8 @@ class grabWindow(Tkinter.Tk):
 
         """ Closing function for the grab window """
 
-        config.write(CONFIG)
         self.destroy()
+        self.config.save()
 
     def autoFocus(self):
 
@@ -394,7 +450,7 @@ class grabWindow(Tkinter.Tk):
         if event.keysym == 'Escape':
             self.deleteEvent()
         elif event.keysym == 'F1' and not self.disabled.get():
-            config = configWindow(self, self.session, self.disabled)
+            config = SettingsWindow(self, self.session, self.config, self.disabled)
             config.mainloop()
 
     def drawSquare(self, event):
@@ -454,7 +510,7 @@ class grabWindow(Tkinter.Tk):
 
         self.withdraw()
 
-        fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), str(config.getroot().find('format').text))
+        fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), str(self.config['format']))
 
         ImageGrab.grab((x, y, w, h)).save(fileName)
         self.session.upload(fileName)
@@ -462,15 +518,15 @@ class grabWindow(Tkinter.Tk):
 
         result = self.session.share(fileName, 'true')
 
-        if config.getroot().find('copy').text == 'true':
+        if self.config['copy'] == 'true':
             self.clipboard_clear()
             self.clipboard_append(result['url'])
 
-        if config.getroot().find('browser').text == 'true':
+        if self.config['browser'] == 'true':
             webbrowser.open(result['url'])
 
-        if config.getroot().find('tooltip').text == 'true':
-            alert = tooltip(self, "Uploading is completed", 2500)
+        if self.config['tooltip'] == 'true':
+            alert = Tooltip(self, "Uploading is completed", 2500)
             alert.geometry("%dx%d%+d%+d" % (140, 23, self.winfo_screenwidth() - 140, 0))
             alert.mainloop()
 
@@ -478,11 +534,10 @@ class grabWindow(Tkinter.Tk):
 
 
 def main():
-    crop = grabWindow()
+    crop = GrabWindow()
     crop.autoFocus()
     crop.mainloop()
 
 
 if __name__ == '__main__':
-    config = xml.parse(CONFIG)
     main()
