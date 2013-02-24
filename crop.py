@@ -53,11 +53,13 @@ class Connection:
     access_token = None
     config = None
 
-    def __init__(self):
+    def __init__(self, config):
 
-        """ Load the config file """
+        """ Get the config file
+        :param config: The loaded config
+        """
 
-        self.config = Config(CONFIG)
+        self.config = config
 
     def authorize(self):
 
@@ -395,7 +397,7 @@ class GrabWindow(Tkinter.Tk):
         self.square = Tkinter.Canvas(self, width = 0, height = 0, bg = 'black')
 
         self.withdraw()
-        self.session = Connection()
+        self.session = Connection(self.config)
 
         if(not self.session.load()):
             request_token = self.session.authorize()
@@ -420,6 +422,7 @@ class GrabWindow(Tkinter.Tk):
 
         self.destroy()
         self.config.save()
+        print("exit: %s" % self.config['token'])
 
     def autoFocus(self):
 
