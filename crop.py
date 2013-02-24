@@ -2,8 +2,8 @@
 #-*- coding: utf-8 -*-
 
 __author__ = "Tornyi Dénes"
-__credits__ = ["Tajti Ádám", "Tar Dániel"]
 __version__ = "1.0.0"
+
 
 SERVER = 'jamcropxy.appspot.com'
 CONFIG = 'config.xml'
@@ -31,7 +31,7 @@ register_openers()
 class Reference:
     def __init__(self, var):
 
-        """ Initializing the variable, when you define the class"""
+        """ Set the variable, when initializing the class"""
 
         self.var = var
 
@@ -43,7 +43,7 @@ class Reference:
 
     def set(self, var):
 
-        """ Set he value of the variable """
+        """ Set the value of the variable """
 
         self.var = var
 
@@ -61,7 +61,7 @@ class Connection:
 
     def authorize(self):
 
-        """ Get a request token from the server """
+        """ Get a request token """
 
         result = urllib2.urlopen('https://%s/authorize' % SERVER)
         self.request_token = dict(urlparse.parse_qsl(result.read()))
@@ -87,11 +87,9 @@ class Connection:
 
     def unlink(self):
 
-        """ Delete every token from the memory and from the config """
+        """ Delete token from the config """
 
         self.config['token'] = None
-        self.request_token = None
-        self.access_token = None
 
     def upload(self, fileName):
 
@@ -107,7 +105,7 @@ class Connection:
 
     def share(self, fileName, short = 'false'):
 
-        """ Get a link of the previously uploaded file
+        """ Get the link of an uploaded file
         :param fileName: Name of the file for share
         :param shortUrl: Get short or long URL
         """
@@ -181,7 +179,7 @@ class Window():
         :param y: First vertical pixel
         :param w: Width of the menu
         :param var: StringVar for storing the current value
-        :param values: A list of possible values
+        :param values: List of possible values
         """
 
         menu = apply(Tkinter.OptionMenu, (root, var) + tuple(values))
@@ -210,7 +208,7 @@ class Config(ElementTree):
 
     def __init__(self, name):
 
-        """ Open an XML file for edit
+        """ Open an XML file
         :param name: Name of the XML file
         """
 
@@ -228,7 +226,7 @@ class Config(ElementTree):
 
     def __getitem__(self, key):
 
-        """ Set an item of the file
+        """ Get an item of the file
         :param key: Name of the item
         """
 
@@ -240,20 +238,14 @@ class Config(ElementTree):
 
         self.write(self.name)
 
-    def refresh(self):
-
-        """ Refresh the opened XML file """
-
-        self.parse(self.name)
-
 
 class Tooltip(Tkinter.Toplevel, Window):
     def __init__(self, parent, message, timeout = 1500):
 
         """ Initializing a tooltip window
         :param parent: The parent window
-        :param message: Message which will show in the tooltip
-        :param timeout: Timeout of the tooltip
+        :param message: Message which will show in the window
+        :param timeout: Timeout of the window
         """
 
         Tkinter.Toplevel.__init__(self, parent, bg = 'white')
@@ -276,7 +268,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
     def __init__(self, parent, session, config, status = Reference(False)):
 
-        """ Initializing the preferences window
+        """ Initializing the settings window
         :param parent: The parent window
         :param session: Current session
         :param status: Status of the parent window
@@ -316,7 +308,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         if self.config['browser'] == 'false':
             shortCheck.deselect()
 
-        # Create the tooltip checkbox
+        # Create the tooltip behavior checkbox
 
         self.label(self, 5, 55, "Show a tooltip:")
 
@@ -357,7 +349,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
     def setConfig(self, key, value):
 
-        """ Set the url copy parameter
+        """ Set a parameter
         :param key: Name of the parameter
         :param value: Value of the parameter
         """
@@ -366,7 +358,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
     def unlink(self, parent, session):
 
-        """ Unlink JamCrop from the server, and close every window
+        """ Unlink client from the server, and close every window
         :param parent: Parent window
         :param session: Status of the settings window
         """
@@ -385,7 +377,7 @@ class GrabWindow(Tkinter.Tk):
 
     def __init__(self):
 
-        """ Initializing the grab window of the application """
+        """ Initializing the grab window """
 
         Tkinter.Tk.__init__(self)
         self.config = Config(CONFIG)
