@@ -2,6 +2,7 @@
     <browser>true</browser>
     <tooltip>true</tooltip>
     <format>jpg</format>
+    <short>false</short>
     <copy>true</copy>
-    <token>oauth_token_secret=ktj5rhc5l1cybrm&amp;oauth_token=mu7k7mjlk1hj7z1&amp;uid=4213669</token>
+    <token />
 </config>

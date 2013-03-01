@@ -109,7 +109,7 @@ class Connection:
 
         """ Get the link of an uploaded file
         :param fileName: Name of the file for share
-        :param shortUrl: Get short or long URL
+        :param short: Get short or long URL
         """
 
         request = urllib2.Request('%s?%s' % ('https://%s/share' % SERVER,
@@ -130,6 +130,8 @@ class Window():
         :param var: StringVar as the entry value (it can be changed later)
         :param text: String as the entry value
         """
+
+        entry = None
 
         if(var is not None):
             entry = Tkinter.Entry(root, textvariable = var, width = w)
@@ -164,6 +166,8 @@ class Window():
         :param var: StringVar as the button title (it can be changed later)
         :param text: String as the button title
         """
+
+        button = None
 
         if(var is not None):
             button = Tkinter.Button(root, textvariable = var, width = w)
@@ -276,7 +280,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         :param status: Status of the parent window
         """
 
-        Tkinter.Toplevel.__init__(self, parent, width = 195, height = 135)
+        Tkinter.Toplevel.__init__(self, parent, width = 195, height = 160)
         self.config = config
 
         self.protocol('WM_DELETE_WINDOW', lambda: self.deleteEvent(status))
@@ -302,13 +306,13 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
         self.label(self, 5, 30, "Open in the browser:")
 
-        shortValue = Tkinter.StringVar()
-        shortCheck = self.check(self, 172, 30, shortValue, 'true', 'false')
-        shortValue.trace(callback = lambda varName, elementName, mode: self.setConfig('browser', shortValue),
+        browserValue = Tkinter.StringVar()
+        browserCheck = self.check(self, 172, 30, browserValue, 'true', 'false')
+        browserValue.trace(callback = lambda varName, elementName, mode: self.setConfig('browser', browserValue),
                          mode = 'w')
 
         if self.config['browser'] == 'false':
-            shortCheck.deselect()
+            browserCheck.deselect()
 
         # Create the tooltip behavior checkbox
 
@@ -322,20 +326,32 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         if self.config['tooltip'] == 'false':
             tooltipCheck.deselect()
 
+        # Create the direct link activator checkbox
+
+        self.label(self, 5, 80, "Use direct link:")
+
+        shortValue = Tkinter.StringVar()
+        shortCheck = self.check(self, 172, 80, shortValue, 'false', 'true')
+        shortValue.trace(callback = lambda varName, elementName, mode: self.setConfig('short', shortValue),
+                         mode = 'w')
+
+        if self.config['short'] == 'true':
+            shortCheck.deselect()
+
         # Create the list of image formats
 
-        self.label(self, 5, 80, "Image format:")
+        self.label(self, 5, 105, "Image format:")
 
         formatValue = Tkinter.StringVar()
         formatValue.set(self.config['format'])
         formatValue.trace(callback = lambda varName, elementName, mode: self.setConfig('format', formatValue),
                           mode = 'w')
 
-        self.menu(self, 93, 75, 9, formatValue, ['jpg', 'png', 'gif'])
+        self.menu(self, 93, 100, 9, formatValue, ['jpg', 'png', 'gif'])
 
         # Create the button to unlink the client
 
-        button = self.button(self, 5, 105, 25, text = "Unlink client")
+        button = self.button(self, 5, 130, 25, text = "Unlink client")
         button.bind("<Button-1>", lambda event: self.unlink(parent, session))
 
         status.set(True)
@@ -422,7 +438,6 @@ class GrabWindow(Tkinter.Tk):
 
         self.destroy()
         self.config.save()
-        print("exit: %s" % self.config['token'])
 
     def autoFocus(self):
 
@@ -511,7 +526,10 @@ class GrabWindow(Tkinter.Tk):
         self.session.upload(fileName)
         os.unlink(fileName)
 
-        result = self.session.share(fileName, 'true')
+        result = self.session.share(fileName, self.config['short'])
+
+        if self.config['short'] == 'false':
+            result['url'] += '?dl=1'
 
         if self.config['copy'] == 'true':
             self.clipboard_clear()
