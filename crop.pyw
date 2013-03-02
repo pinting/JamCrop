@@ -18,7 +18,6 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import webbrowser
 import urlparse
-import Tkinter
 import urllib2
 import urllib
 import json
@@ -120,105 +119,6 @@ class Connection:
         return json.loads((urllib2.urlopen(request)).read())
 
 
-class Window():
-    def entry(self, root, x, y, w, default, var = None, text = None):
-
-        """ Create a new entry
-        :param root: Parent window
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param w: Width of the entry
-        :param default: Default value
-        :param var: StringVar as the entry value (it can be changed later)
-        :param text: String as the entry value
-        """
-
-        entry = None
-
-        if(var is not None):
-            entry = Tkinter.Entry(root, textvariable = var, width = w)
-        elif(text is not None):
-            entry = Tkinter.Entry(root, text = text, width = w)
-        if(default is not None):
-            entry.insert(0, default)
-
-        entry.place(x = x, y = y)
-        return entry
-
-    def label(self, root, x, y, text):
-
-        """ Create a new label
-        :param root: Parent window
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param text: Content of the label
-        """
-
-        label = Tkinter.Label(root, text = text)
-        label.place(x = x, y = y)
-        return label
-
-    def button(self, root, x, y, w, var = None, text = None):
-
-        """ Create a new button
-        :param root: Parent window
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param w: Width of the button
-        :param var: StringVar as the button title (it can be changed later)
-        :param text: String as the button title
-        """
-
-        button = None
-
-        if(var is not None):
-            button = Tkinter.Button(root, textvariable = var, width = w)
-        elif(text is not None):
-            button = Tkinter.Button(root, text = text, width = w)
-
-        button.place(x = x, y = y)
-        return button
-
-    def menu(self, root, x, y, w, var, values):
-
-        """ Create a new menu
-        :param root: Parent window
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param w: Width of the menu
-        :param var: StringVar for storing the current value
-        :param values: List of possible values
-        """
-
-        menu = apply(Tkinter.OptionMenu, (root, var) + tuple(values))
-        menu.config(width = w)
-        menu.place(x = x, y = y)
-        return menu
-
-    def check(self, root, x, y, var, on, off):
-
-        """ Create a new checkbox
-        :param root: Parent window
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param var: StringVar which storing the value
-        :param on: Value of the checkbox, if it is checked
-        :param off: Value of the checkbox if it is not checked
-        """
-
-        check = Tkinter.Checkbutton(root, variable = var, offvalue = off, onvalue = on)
-        check.place(x = x, y = y)
-        return check
-
-
-class Notification(QSystemTrayIcon):
-    def __init__(self, title, msg, icon, timeout = 2500, parent = None):
-        QSystemTrayIcon.__init__(self, parent)
-        self.setIcon(QIcon(icon))
-        self.show()
-        self.showMessage(title, msg, msecs = timeout)
-
-
 class Config(ElementTree):
     name = None
 
@@ -255,121 +155,70 @@ class Config(ElementTree):
         self.write(self.name)
 
 
-class SettingsWindow(Tkinter.Toplevel, Window):
+class Window(QWidget):
+    def center(self):
+        qr = self.frameGeometry()
+        cp = QDesktopWidget().availableGeometry().center()
+        qr.moveCenter(cp)
+        self.move(qr.topLeft())
+
+    def button(self, title, x, y, onclick = 0):
+        btn = QPushButton(title, self)
+        if(onclick): btn.clicked.connect(onclick);
+        btn.resize(btn.sizeHint())
+        btn.move(x, y)
+        return(btn);
+
+    def label(self, msg, x, y):
+        lbl = QLabel(msg, self)
+        lbl.move(x, y)
+        return(lbl)
+
+    def field(self, x, y, w, h, value = 0, action = 0):
+        field = QLineEdit(self)
+        field.setMaxLength(64)
+        field.move(x, y)
+        field.resize(w, h)
+        if(value): field.setText(value)
+        if(action): field.textEdited.connect(action)
+        return(field)
+
+
+class Notification(QSystemTrayIcon):
+    def __init__(self, title, msg, icon, timeout = 2500, parent = None):
+        QSystemTrayIcon.__init__(self, parent)
+        self.setIcon(QIcon(icon))
+        self.show()
+        self.showMessage(title, msg, msecs = timeout)
+
+
+class SettingsWindow(Window):
+    session = None
     config = None
+    status = None
 
     def __init__(self, parent, session, config, status = Reference(False)):
-
-        """ Initializing the settings window
-        :param parent: The parent window
-        :param session: Current session
-        :param status: Status of the parent window
-        """
-
-        Tkinter.Toplevel.__init__(self, parent, width = 195, height = 160)
+        Window.__init__(self)
         self.config = config
+        self.status = status
+        self.session = session
+        self.parent = parent
 
-        self.protocol('WM_DELETE_WINDOW', lambda: self.deleteEvent(status))
-        self.resizable(width = 'false', height = 'false')
-        self.attributes('-toolwindow', 1)
-        self.wm_attributes("-topmost", 1)
-        self.title(u"Settings")
-        self.wm_iconbitmap(ICON)
+        self.setWindowIcon(QIcon(ICON))
+        self.setWindowTitle("Settings")
+        self.resize(230, 115)
+        self.setFixedSize(self.size())
+        self.center()
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
-        # Create the automatic URL copy checkbox
+        self.show()
+        self.activateWindow()
+        self.status.set(True)
 
-        self.label(self, 5, 5, "Automatic URL copy:")
-
-        copyValue = Tkinter.StringVar()
-        copyCheck = self.check(self, 172, 5, copyValue, 'true', 'false')
-        copyValue.trace(callback = lambda varName, elementName, mode: self.setConfig('copy', copyValue),
-                        mode = 'w')
-
-        if self.config['copy'] == 'false':
-            copyCheck.deselect()
-
-        # Create the browser behavior checkbox
-
-        self.label(self, 5, 30, "Open in the browser:")
-
-        browserValue = Tkinter.StringVar()
-        browserCheck = self.check(self, 172, 30, browserValue, 'true', 'false')
-        browserValue.trace(callback = lambda varName, elementName, mode: self.setConfig('browser', browserValue),
-                           mode = 'w')
-
-        if self.config['browser'] == 'false':
-            browserCheck.deselect()
-
-        # Create the tooltip behavior checkbox
-
-        self.label(self, 5, 55, "Show a tooltip:")
-
-        tooltipValue = Tkinter.StringVar()
-        tooltipCheck = self.check(self, 172, 55, tooltipValue, 'true', 'false')
-        tooltipValue.trace(callback = lambda varName, elementName, mode: self.setConfig('notification', tooltipValue),
-                           mode = 'w')
-
-        if self.config['notification'] == 'false':
-            tooltipCheck.deselect()
-
-        # Create the direct link activator checkbox
-
-        self.label(self, 5, 80, "Use direct link:")
-
-        shortValue = Tkinter.StringVar()
-        shortCheck = self.check(self, 172, 80, shortValue, 'false', 'true')
-        shortValue.trace(callback = lambda varName, elementName, mode: self.setConfig('short', shortValue),
-                         mode = 'w')
-
-        if self.config['short'] == 'true':
-            shortCheck.deselect()
-
-        # Create the list of image formats
-
-        self.label(self, 5, 105, "Image format:")
-
-        formatValue = Tkinter.StringVar()
-        formatValue.set(self.config['format'])
-        formatValue.trace(callback = lambda varName, elementName, mode: self.setConfig('format', formatValue),
-                          mode = 'w')
-
-        self.menu(self, 93, 100, 9, formatValue, ['jpg', 'png', 'gif'])
-
-        # Create the button to unlink the client
-
-        button = self.button(self, 5, 130, 25, text = "Unlink client")
-        button.bind("<Button-1>", lambda event: self.unlink(parent, session))
-
-        status.set(True)
-
-    def deleteEvent(self, status):
-
-        """ Settings window closing function
-        :param status: Status of the settings window
-        """
-
-        status.set(False)
-        self.destroy()
-
-    def setConfig(self, key, value):
-
-        """ Set a parameter
-        :param key: Name of the parameter
-        :param value: Value of the parameter
-        """
-
-        self.config[key] = unicode(value.get())
-
-    def unlink(self, parent, session):
-
-        """ Unlink client from the server, and close every window
-        :param parent: Parent window
-        :param session: Status of the settings window
-        """
-
-        session.unlink()
-        parent.deleteEvent()
-
+    def closeEvent(self, event):
+        self.parent.activateWindow()
+        self.status.set(False)
+        self.close()
 
 class GrabWindow(QWidget):
     disabled = Reference(False)
@@ -384,7 +233,7 @@ class GrabWindow(QWidget):
         self.screen = QDesktopWidget().screenGeometry()
         self.setGeometry(0, 0, self.screen.width(), self.screen.height())
 
-        self.setWindowTitle('JamCrop')
+        self.setWindowTitle("JamCrop")
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
@@ -399,7 +248,7 @@ class GrabWindow(QWidget):
             webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
                                        urllib.urlencode({'oauth_token' : request_token['oauth_token']})))
 
-            reply = QMessageBox.question(self, 'JamCrop', "The JamCrop require a limited Dropbox"
+            reply = QMessageBox.question(self, "JamCrop", "The JamCrop require a limited Dropbox"
                                                                 " access for itself. If you allowed the "
                                                                 "connection to the Dropbox, from the recently "
                                                                 "appeared browser window, please click on the "
@@ -428,10 +277,7 @@ class GrabWindow(QWidget):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F1:
-            #self.settings = SettingsWindow(self.disabled)
-            #self.settings.activateWindow()
-            config = SettingsWindow(None, self.session, self.config, self.disabled)
-            config.mainloop()
+            self.settings = SettingsWindow(self, self.session, self.config, self.disabled)
         elif event.key() == Qt.Key_Escape:
             self.closeEvent(None)
 
@@ -440,7 +286,9 @@ class GrabWindow(QWidget):
             self.origin = event.pos()
             self.shape.setGeometry(QRect(self.origin, QSize()))
             self.shape.show()
-            QWidget.mousePressEvent(self, event)
+        else:
+            self.settings.activateWindow()
+        QWidget.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):
         if not self.disabled.get() and self.shape.isVisible():
@@ -452,10 +300,10 @@ class GrabWindow(QWidget):
             self.shape.hide()
             self.hide()
 
-            fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), str(self.config['format']))
+            fileName = "%s.jpg" % str(time.strftime('%Y_%m_%d_%H_%M_%S'))
 
             shot = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
-            shot.save(fileName, str(self.config['format']))
+            shot.save(fileName, 'jpg')
 
             self.session.upload(fileName)
             os.unlink(fileName)

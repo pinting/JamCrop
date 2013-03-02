@@ -1,7 +1,6 @@
 <config>
     <notification>true</notification>
     <browser>true</browser>
-    <format>jpg</format>
     <short>false</short>
     <copy>true</copy>
     <token>oauth_token_secret=gqrjjmbtpk4vdar&amp;oauth_token=708vswxlm0kkgvn&amp;uid=4213669</token>
