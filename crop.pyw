@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
+from PyQt4 import Qt
 
 __author__ = "Tornyi Dénes"
 __version__ = "1.0.0"
@@ -13,9 +14,8 @@ ICON = 'icon.ico'
 from poster.streaminghttp import register_openers
 from poster.encode import multipart_encode
 from xml.etree.ElementTree import ElementTree
-from PyQt4 import QtGui, QtCore
-from pil import ImageGrab
-import tkMessageBox
+from PyQt4.QtCore import *
+from PyQt4.QtGui import *
 import webbrowser
 import urlparse
 import Tkinter
@@ -211,6 +211,14 @@ class Window():
         return check
 
 
+class Notification(QSystemTrayIcon):
+    def __init__(self, title, msg, icon, timeout = 2500, parent = None):
+        QSystemTrayIcon.__init__(self, parent)
+        self.setIcon(QIcon(icon))
+        self.show()
+        self.showMessage(title, msg, msecs = timeout)
+
+
 class Config(ElementTree):
     name = None
 
@@ -298,10 +306,10 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
         tooltipValue = Tkinter.StringVar()
         tooltipCheck = self.check(self, 172, 55, tooltipValue, 'true', 'false')
-        tooltipValue.trace(callback = lambda varName, elementName, mode: self.setConfig('tooltip', tooltipValue),
+        tooltipValue.trace(callback = lambda varName, elementName, mode: self.setConfig('notification', tooltipValue),
                            mode = 'w')
 
-        if self.config['tooltip'] == 'false':
+        if self.config['notification'] == 'false':
             tooltipCheck.deselect()
 
         # Create the direct link activator checkbox
@@ -363,7 +371,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         parent.deleteEvent()
 
 
-class GrabWindow(QtGui.QWidget):
+class GrabWindow(QWidget):
     disabled = Reference(False)
     settings = None
     config = None
@@ -373,15 +381,15 @@ class GrabWindow(QtGui.QWidget):
         super(GrabWindow, self).__init__()
         self.config = Config(CONFIG)
 
-        self.screen = QtGui.QDesktopWidget().screenGeometry()
+        self.screen = QDesktopWidget().screenGeometry()
         self.setGeometry(0, 0, self.screen.width(), self.screen.height())
 
         self.setWindowTitle('JamCrop')
-        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
-        self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
-        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
-        self.shape = QtGui.QRubberBand(QtGui.QRubberBand.Rectangle, self)
+        self.shape = QRubberBand(QRubberBand.Rectangle, self)
         self.setMouseTracking(True)
 
         self.session = Connection(self.config)
@@ -391,14 +399,14 @@ class GrabWindow(QtGui.QWidget):
             webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
                                        urllib.urlencode({'oauth_token' : request_token['oauth_token']})))
 
-            reply = QtGui.QMessageBox.question(self, 'JamCrop', "The JamCrop require a limited Dropbox"
+            reply = QMessageBox.question(self, 'JamCrop', "The JamCrop require a limited Dropbox"
                                                                 " access for itself. If you allowed the "
                                                                 "connection to the Dropbox, from the recently "
                                                                 "appeared browser window, please click on the "
                                                                 "OK button. After the grab window have appeared, "
                                                                 "you can open settings by pressing [F1].",
-                                               QtGui.QMessageBox.Yes | QtGui.QMessageBox.No, QtGui.QMessageBox.No)
-            if reply == QtGui.QMessageBox.Yes:
+                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if reply == QMessageBox.Yes:
                 self.session.access()
             else: return
 
@@ -406,10 +414,10 @@ class GrabWindow(QtGui.QWidget):
         self.show()
 
     def paintEvent(self, event):
-        canvas = QtGui.QPainter()
+        canvas = QPainter()
         canvas.begin(self)
-        canvas.setPen(QtGui.QColor(0, 0, 0, 1))
-        canvas.setBrush(QtGui.QColor(0, 0, 0, 1))
+        canvas.setPen(QColor(0, 0, 0, 1))
+        canvas.setBrush(QColor(0, 0, 0, 1))
         canvas.drawRect(0, 0, self.screen.width(), self.screen.height())
         canvas.end()
 
@@ -419,64 +427,60 @@ class GrabWindow(QtGui.QWidget):
         sys.exit()
 
     def keyPressEvent(self, event):
-        if event.key() == QtCore.Qt.Key_F1:
-            self.settings = SettingsWindow(self.disabled)
-            self.settings.activateWindow()
-            print("Settings...")
-        elif event.key() == QtCore.Qt.Key_Escape:
-            self.close()
-            sys.exit()
+        if event.key() == Qt.Key_F1:
+            #self.settings = SettingsWindow(self.disabled)
+            #self.settings.activateWindow()
+            config = SettingsWindow(None, self.session, self.config, self.disabled)
+            config.mainloop()
+        elif event.key() == Qt.Key_Escape:
+            self.closeEvent(None)
 
     def mousePressEvent(self, event):
         if not self.disabled.get():
             self.origin = event.pos()
-            self.shape.setGeometry(QtCore.QRect(self.origin, QtCore.QSize()))
+            self.shape.setGeometry(QRect(self.origin, QSize()))
             self.shape.show()
-            QtGui.QWidget.mousePressEvent(self, event)
+            QWidget.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):
-        if not self.disabled.get():
-            if self.shape.isVisible():
-                self.shape.setGeometry(QtCore.QRect(self.origin, event.pos()).normalized())
-            QtGui.QWidget.mouseMoveEvent(self, event)
+        if not self.disabled.get() and self.shape.isVisible():
+            self.shape.setGeometry(QRect(self.origin, event.pos()).normalized())
+        QWidget.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
-        if not self.disabled.get():
-            if self.shape.isVisible():
-                self.shape.hide()
-                self.hide()
+        if not self.disabled.get() and self.shape.isVisible():
+            self.shape.hide()
+            self.hide()
 
-                fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), str(self.config['format']))
+            fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), str(self.config['format']))
 
-                shot = QtGui.QPixmap.grabWindow(QtGui.QApplication.desktop().winId()).copy(self.shape.geometry())
-                shot.save(fileName, str(self.config['format']))
+            shot = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
+            shot.save(fileName, str(self.config['format']))
 
-                self.session.upload(fileName)
-                os.unlink(fileName)
+            self.session.upload(fileName)
+            os.unlink(fileName)
 
-                result = self.session.share(fileName, self.config['short'])
+            result = self.session.share(fileName, self.config['short'])
 
-                if self.config['short'] == 'false':
-                    result['url'] += '?dl=1'
+            if self.config['short'] == 'false':
+                result['url'] += '?dl=1'
 
-                if self.config['copy'] == 'true':
-                    self.clipboard_clear()
-                    self.clipboard_append(result['url'])
+            if self.config['copy'] == 'true':
+                QApplication.clipboard().setText(QString(result['url']), QClipboard.Clipboard)
 
-                if self.config['browser'] == 'true':
-                    webbrowser.open(result['url'])
+            if self.config['browser'] == 'true':
+                webbrowser.open(result['url'])
 
-                if self.config['tooltip'] == 'true':
-                    print("Uploading is completed")
+            if self.config['notification'] == 'true':
+                self.alert = Notification("JamCrop", "Uploading is completed", ICON)
 
-                self.close()
-                sys.exit()
-            QtGui.QWidget.mouseReleaseEvent(self, event)
-            self.activateWindow()
+            self.closeEvent(None)
+
+        QWidget.mouseReleaseEvent(self, event)
 
 
 def main():
-    app = QtGui.QApplication(sys.argv)
+    app = QApplication(sys.argv)
     crop = GrabWindow()
     sys.exit(app.exec_())
 

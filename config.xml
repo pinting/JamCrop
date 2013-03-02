@@ -1,8 +1,8 @@
 <config>
+    <notification>true</notification>
     <browser>true</browser>
-    <tooltip>true</tooltip>
     <format>jpg</format>
     <short>false</short>
     <copy>true</copy>
-    <token />
+    <token>oauth_token_secret=gqrjjmbtpk4vdar&amp;oauth_token=708vswxlm0kkgvn&amp;uid=4213669</token>
 </config>
