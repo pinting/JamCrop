@@ -280,7 +280,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         :param status: Status of the parent window
         """
 
-        Tkinter.Toplevel.__init__(self, parent, width = 195, height = 160)
+        Tkinter.Toplevel.__init__(self, parent, width = 195, height = 140)
         self.config = config
 
         self.protocol('WM_DELETE_WINDOW', lambda: self.deleteEvent(status))
@@ -296,8 +296,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
         copyValue = Tkinter.StringVar()
         copyCheck = self.check(self, 172, 5, copyValue, 'true', 'false')
-        copyValue.trace(callback = lambda varName, elementName, mode: self.setConfig('copy', copyValue),
-                        mode = 'w')
+        copyValue.trace(callback = lambda varName, elementName, mode: self.set('copy', copyValue), mode = 'w')
 
         if self.config['copy'] == 'false':
             copyCheck.deselect()
@@ -308,20 +307,18 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
         browserValue = Tkinter.StringVar()
         browserCheck = self.check(self, 172, 30, browserValue, 'true', 'false')
-        browserValue.trace(callback = lambda varName, elementName, mode: self.setConfig('browser', browserValue),
-                         mode = 'w')
+        browserValue.trace(callback = lambda varName, elementName, mode: self.set('browser', browserValue), mode = 'w')
 
         if self.config['browser'] == 'false':
             browserCheck.deselect()
 
         # Create the tooltip behavior checkbox
 
-        self.label(self, 5, 55, "Show a tooltip:")
+        self.label(self, 5, 55, "Show notification:")
 
         tooltipValue = Tkinter.StringVar()
         tooltipCheck = self.check(self, 172, 55, tooltipValue, 'true', 'false')
-        tooltipValue.trace(callback = lambda varName, elementName, mode: self.setConfig('tooltip', tooltipValue),
-                           mode = 'w')
+        tooltipValue.trace(callback = lambda varName, elementName, mode: self.set('tooltip', tooltipValue), mode = 'w')
 
         if self.config['tooltip'] == 'false':
             tooltipCheck.deselect()
@@ -332,29 +329,18 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
         shortValue = Tkinter.StringVar()
         shortCheck = self.check(self, 172, 80, shortValue, 'false', 'true')
-        shortValue.trace(callback = lambda varName, elementName, mode: self.setConfig('short', shortValue),
-                         mode = 'w')
+        shortValue.trace(callback = lambda varName, elementName, mode: self.set('short', shortValue), mode = 'w')
 
         if self.config['short'] == 'true':
             shortCheck.deselect()
 
-        # Create the list of image formats
-
-        self.label(self, 5, 105, "Image format:")
-
-        formatValue = Tkinter.StringVar()
-        formatValue.set(self.config['format'])
-        formatValue.trace(callback = lambda varName, elementName, mode: self.setConfig('format', formatValue),
-                          mode = 'w')
-
-        self.menu(self, 93, 100, 9, formatValue, ['jpg', 'png', 'gif'])
-
         # Create the button to unlink the client
 
-        button = self.button(self, 5, 130, 25, text = "Unlink client")
+        button = self.button(self, 5, 110, 25, text = "Unlink client")
         button.bind("<Button-1>", lambda event: self.unlink(parent, session))
 
         status.set(True)
+        self.focus()
 
     def deleteEvent(self, status):
 
@@ -365,7 +351,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         status.set(False)
         self.destroy()
 
-    def setConfig(self, key, value):
+    def set(self, key, value):
 
         """ Set a parameter
         :param key: Name of the parameter
@@ -520,7 +506,7 @@ class GrabWindow(Tkinter.Tk):
 
         self.withdraw()
 
-        fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), str(self.config['format']))
+        fileName = "%s.jpg" % str(time.strftime('%Y_%m_%d_%H_%M_%S'))
 
         ImageGrab.grab((x, y, w, h)).save(fileName)
         self.session.upload(fileName)

@@ -1,7 +1,6 @@
 <config>
     <browser>true</browser>
     <tooltip>true</tooltip>
-    <format>jpg</format>
     <short>false</short>
     <copy>true</copy>
     <token />
