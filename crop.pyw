@@ -13,6 +13,7 @@ ICON = 'icon.ico'
 from poster.streaminghttp import register_openers
 from poster.encode import multipart_encode
 from xml.etree.ElementTree import ElementTree
+from PyQt4 import QtGui, QtCore
 from pil import ImageGrab
 import tkMessageBox
 import webbrowser
@@ -22,6 +23,7 @@ import urllib2
 import urllib
 import json
 import time
+import sys
 import os
 
 
@@ -113,8 +115,8 @@ class Connection:
         """
 
         request = urllib2.Request('%s?%s' % ('https://%s/share' % SERVER,
-                                  urllib.urlencode(dict(self.access_token.items() +
-                                                        dict({'name': fileName, 'short': short}).items()))))
+                                             urllib.urlencode(dict(self.access_token.items() +
+                                                                   dict({'name': fileName, 'short': short}).items()))))
         return json.loads((urllib2.urlopen(request)).read())
 
 
@@ -245,30 +247,6 @@ class Config(ElementTree):
         self.write(self.name)
 
 
-class Tooltip(Tkinter.Toplevel, Window):
-    def __init__(self, parent, message, timeout = 1500):
-
-        """ Initializing a tooltip window
-        :param parent: The parent window
-        :param message: Message which will show in the window
-        :param timeout: Timeout of the window
-        """
-
-        Tkinter.Toplevel.__init__(self, parent, bg = 'white')
-
-        self.overrideredirect(1)
-        self.geometry("%dx%d%+d%+d" % (128, 24, self.winfo_screenwidth() - 128, 0))
-        self.resizable(width = 'false', height = 'false')
-        self.attributes('-alpha', 0.65)
-        self.wm_attributes("-topmost", 1)
-
-        self.bind("<Button-1>", lambda event: self.destroy())
-        self.after(timeout, self.destroy)
-
-        message = self.label(self, 5, 0, message)
-        message.config(bg = "white", fg = "black")
-
-
 class SettingsWindow(Tkinter.Toplevel, Window):
     config = None
 
@@ -309,7 +287,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         browserValue = Tkinter.StringVar()
         browserCheck = self.check(self, 172, 30, browserValue, 'true', 'false')
         browserValue.trace(callback = lambda varName, elementName, mode: self.setConfig('browser', browserValue),
-                         mode = 'w')
+                           mode = 'w')
 
         if self.config['browser'] == 'false':
             browserCheck.deselect()
@@ -385,171 +363,122 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         parent.deleteEvent()
 
 
-class GrabWindow(Tkinter.Tk):
+class GrabWindow(QtGui.QWidget):
     disabled = Reference(False)
-    session = None
+    settings = None
     config = None
-    square = None
-    last = False
-    x, y, = 0, 0
+    shape = None
 
     def __init__(self):
-
-        """ Initializing the grab window """
-
-        Tkinter.Tk.__init__(self)
+        super(GrabWindow, self).__init__()
         self.config = Config(CONFIG)
 
-        self.protocol('WM_DELETE_WINDOW', self.deleteEvent)
-        self.configure(background = 'white')
-        self.wm_attributes("-topmost", 1)
-        self.attributes('-fullscreen', 1)
-        self.attributes('-alpha', 0.15)
-        self.wm_iconbitmap(ICON)
-        self.title(u"JamCrop")
+        self.screen = QtGui.QDesktopWidget().screenGeometry()
+        self.setGeometry(0, 0, self.screen.width(), self.screen.height())
 
-        self.bind("<Button-1>", self.click)
-        self.bind_all('<Key>', self.keyPress)
-        self.square = Tkinter.Canvas(self, width = 0, height = 0, bg = 'black')
+        self.setWindowTitle('JamCrop')
+        self.setAttribute(QtCore.Qt.WA_TranslucentBackground)
+        self.setWindowFlags(QtCore.Qt.FramelessWindowHint)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
 
-        self.withdraw()
+        self.shape = QtGui.QRubberBand(QtGui.QRubberBand.Rectangle, self)
+        self.setMouseTracking(True)
+
         self.session = Connection(self.config)
 
         if(not self.session.load()):
             request_token = self.session.authorize()
             webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
-                            urllib.urlencode({'oauth_token' : request_token['oauth_token']})))
+                                       urllib.urlencode({'oauth_token' : request_token['oauth_token']})))
 
-            if tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop require a limited Dropbox"
-                                                                     " access for itself. If you allowed the "
-                                                                     "connection to the Dropbox, from the recently "
-                                                                     "appeared browser window, please click on the "
-                                                                     "OK button. After the grab window have appeared, "
-                                                                     "you can open settings by pressing [F1]."):
+            reply = QtGui.QMessageBox.question(self, 'JamCrop', "The JamCrop require a limited Dropbox"
+                                                                " access for itself. If you allowed the "
+                                                                "connection to the Dropbox, from the recently "
+                                                                "appeared browser window, please click on the "
+                                                                "OK button. After the grab window have appeared, "
+                                                                "you can open settings by pressing [F1].",
+                                               QtGui.QMessageBox.Yes | QtGui.QMessageBox.No, QtGui.QMessageBox.No)
+            if reply == QtGui.QMessageBox.Yes:
                 self.session.access()
             else: return
 
-        self.update()
-        self.deiconify()
+        self.activateWindow()
+        self.show()
 
-    def deleteEvent(self):
+    def paintEvent(self, event):
+        canvas = QtGui.QPainter()
+        canvas.begin(self)
+        canvas.setPen(QtGui.QColor(0, 0, 0, 1))
+        canvas.setBrush(QtGui.QColor(0, 0, 0, 1))
+        canvas.drawRect(0, 0, self.screen.width(), self.screen.height())
+        canvas.end()
 
-        """ Closing function for the grab window """
-
-        self.destroy()
+    def closeEvent(self, event):
         self.config.save()
+        self.close()
+        sys.exit()
 
-    def autoFocus(self):
+    def keyPressEvent(self, event):
+        if event.key() == QtCore.Qt.Key_F1:
+            self.settings = SettingsWindow(self.disabled)
+            self.settings.activateWindow()
+            print("Settings...")
+        elif event.key() == QtCore.Qt.Key_Escape:
+            self.close()
+            sys.exit()
 
-        """ Automatic focus for the grab window """
+    def mousePressEvent(self, event):
+        if not self.disabled.get():
+            self.origin = event.pos()
+            self.shape.setGeometry(QtCore.QRect(self.origin, QtCore.QSize()))
+            self.shape.show()
+            QtGui.QWidget.mousePressEvent(self, event)
 
-        if self.disabled.get():
-            self.wm_attributes("-topmost", 0)
-        else:
-            self.wm_attributes("-topmost", 1)
-            self.tkraise()
-            self.focus()
-        self.after(250, self.autoFocus)
+    def mouseMoveEvent(self, event):
+        if not self.disabled.get():
+            if self.shape.isVisible():
+                self.shape.setGeometry(QtCore.QRect(self.origin, event.pos()).normalized())
+            QtGui.QWidget.mouseMoveEvent(self, event)
 
-    def keyPress(self, event):
+    def mouseReleaseEvent(self, event):
+        if not self.disabled.get():
+            if self.shape.isVisible():
+                self.shape.hide()
+                self.hide()
 
-        """ Track the key presses
-        :param event: The event which started the function
-        """
+                fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), str(self.config['format']))
 
-        if event.keysym == 'Escape':
-            self.deleteEvent()
-        elif event.keysym == 'F1' and not self.disabled.get():
-            config = SettingsWindow(self, self.session, self.config, self.disabled)
-            config.mainloop()
+                shot = QtGui.QPixmap.grabWindow(QtGui.QApplication.desktop().winId()).copy(self.shape.geometry())
+                shot.save(fileName, str(self.config['format']))
 
-    def drawSquare(self, event):
+                self.session.upload(fileName)
+                os.unlink(fileName)
 
-        """ Draw the selecting square on to the grab window
-        :param event: The event which started the function
-        """
+                result = self.session.share(fileName, self.config['short'])
 
-        if self.x < event.x_root and self.y < event.y_root:
-            self.square.config(width = event.x_root - self.x, height = event.y_root - self.y)
-            self.square.place(x = self.x, y = self.y)
-        elif self.x > event.x_root and self.y > event.y_root:
-            self.square.config(width = self.x - event.x_root, height = self.y - event.y_root)
-            self.square.place(x = event.x_root, y = event.y_root)
-        elif self.x < event.x_root and self.y > event.y_root:
-            self.square.config(width = event.x_root - self.x, height = self.y - event.y_root)
-            self.square.place(x = self.x, y = event.y_root)
-        elif self.x > event.x_root and self.y < event.y_root:
-            self.square.config(width = self.x - event.x_root, height = event.y_root - self.y)
-            self.square.place(x = event.x_root, y = self.y)
-        else:
-            self.square.place_forget()
+                if self.config['short'] == 'false':
+                    result['url'] += '?dl=1'
 
-    def click(self, event):
+                if self.config['copy'] == 'true':
+                    self.clipboard_clear()
+                    self.clipboard_append(result['url'])
 
-        """ Set the coordinates of the screenshot
-        :param event: The event which started the function
-        """
+                if self.config['browser'] == 'true':
+                    webbrowser.open(result['url'])
 
-        if(not self.disabled.get() and not self.last):
-            self.bind("<Motion>", self.drawSquare)
-            self.x = event.x_root
-            self.y = event.y_root
-            self.last = True
-        elif(not self.disabled.get()):
-            if self.x < event.x_root and self.y < event.y_root:
-                self.grab(self.x, self.y, event.x_root, event.y_root)
-            elif self.x > event.x_root and self.y > event.y_root:
-                self.grab(event.x_root, event.y_root, self.x, self.y)
-            elif self.x < event.x_root and self.y > event.y_root:
-                self.grab(self.x, event.y_root, event.x_root, self.y)
-            elif self.x > event.x_root and self.y < event.y_root:
-                self.grab(event.x_root, self.y, self.x, event.y_root)
-            else:
-                self.unbind("<Motion>")
-                self.square.place_forget()
-                self.last = False
+                if self.config['tooltip'] == 'true':
+                    print("Uploading is completed")
 
-    def grab(self, x, y, w, h):
-
-        """ Create the screenshot from the coordinates
-        :param x: First horizontal pixel of the image
-        :param y: First vertical pixel of the image
-        :param w: Width of the image (in pixels)
-        :param h: Height of the image
-        """
-
-        self.withdraw()
-
-        fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), str(self.config['format']))
-
-        ImageGrab.grab((x, y, w, h)).save(fileName)
-        self.session.upload(fileName)
-        os.unlink(fileName)
-
-        result = self.session.share(fileName, self.config['short'])
-
-        if self.config['short'] == 'false':
-            result['url'] += '?dl=1'
-
-        if self.config['copy'] == 'true':
-            self.clipboard_clear()
-            self.clipboard_append(result['url'])
-
-        if self.config['browser'] == 'true':
-            webbrowser.open(result['url'])
-
-        if self.config['tooltip'] == 'true':
-            alert = Tooltip(self, "Uploading is completed", 2500)
-            alert.geometry("%dx%d%+d%+d" % (140, 23, self.winfo_screenwidth() - 140, 0))
-            alert.mainloop()
-
-        self.deleteEvent()
+                self.close()
+                sys.exit()
+            QtGui.QWidget.mouseReleaseEvent(self, event)
+            self.activateWindow()
 
 
 def main():
+    app = QtGui.QApplication(sys.argv)
     crop = GrabWindow()
-    crop.autoFocus()
-    crop.mainloop()
+    sys.exit(app.exec_())
 
 
 if __name__ == '__main__':
