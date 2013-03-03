@@ -157,31 +157,47 @@ class Config(ElementTree):
 
 class Window(QWidget):
     def center(self):
-        qr = self.frameGeometry()
-        cp = QDesktopWidget().availableGeometry().center()
-        qr.moveCenter(cp)
-        self.move(qr.topLeft())
-
-    def button(self, title, x, y, onclick = 0):
-        btn = QPushButton(title, self)
-        if(onclick): btn.clicked.connect(onclick);
-        btn.resize(btn.sizeHint())
-        btn.move(x, y)
-        return(btn);
+        frame = self.frameGeometry()
+        screen = QDesktopWidget().availableGeometry().center()
+        frame.moveCenter(screen)
+        self.move(frame.topLeft())
 
     def label(self, msg, x, y):
-        lbl = QLabel(msg, self)
-        lbl.move(x, y)
-        return(lbl)
+        label = QLabel(msg, self)
+        label.move(x, y)
+        return label
 
-    def field(self, x, y, w, h, value = 0, action = 0):
+    def button(self, title, x, y, onclick = False):
+        button = QPushButton(title, self)
+        button.resize(button.sizeHint())
+        button.move(x, y)
+
+        if onclick:
+            button.clicked.connect(onclick);
+
+        return button
+
+    def field(self, x, y, w, h, value = False, action = False):
         field = QLineEdit(self)
         field.setMaxLength(64)
         field.move(x, y)
         field.resize(w, h)
-        if(value): field.setText(value)
-        if(action): field.textEdited.connect(action)
-        return(field)
+
+        if value:
+            field.setText(value)
+        if action:
+            field.textEdited.connect(action)
+
+        return field
+
+    def check(self, desc, x, y, action = False):
+        check = QCheckBox(desc, self)
+        check.move(x, y)
+
+        if action:
+            check.stateChanged.connect(action);
+
+        return check
 
 
 class Notification(QSystemTrayIcon):
@@ -201,15 +217,49 @@ class SettingsWindow(Window):
         Window.__init__(self)
         self.config = config
         self.status = status
-        self.session = session
         self.parent = parent
 
-        self.setWindowIcon(QIcon(ICON))
-        self.setWindowTitle("Settings")
-        self.resize(230, 115)
-        self.setFixedSize(self.size())
+        self.resize(130, 140)
         self.center()
+
+        self.setWindowTitle("Settings")
+        self.setWindowIcon(QIcon(ICON))
+        self.setFixedSize(self.size())
+        self.setWindowFlags(Qt.Tool)
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+
+        # Create the automatic URL copy checkbox
+
+        copy = self.check('Automatic URL copy', 7, 5, lambda event: self.set('copy', event))
+
+        if self.config['copy'] == 'true':
+            copy.setChecked(True)
+
+        # Create the browser behavior checkbox
+
+        browser = self.check('Open in the browser', 7, 30, lambda event: self.set('browser', event))
+
+        if self.config['browser'] == 'true':
+            browser.setChecked(True)
+
+        # Create the tooltip behavior checkbox
+
+        notification = self.check('Show notification', 7, 55, lambda event: self.set('notification', event))
+
+        if self.config['notification'] == 'true':
+            notification.setChecked(True)
+
+        # Create the direct link activator checkbox
+
+        short = self.check('Use direct link', 7, 80, action = lambda event: self.set('short', event))
+
+        if self.config['short'] == 'true':
+            short.setChecked(True)
+
+        # Create the button to unlink the client
+
+        unlink = self.button("Unlink client", 5, 105, lambda event: self.unlink(session))
+        unlink.resize(120, 30)
 
         self.show()
         self.activateWindow()
@@ -219,6 +269,17 @@ class SettingsWindow(Window):
         self.parent.activateWindow()
         self.status.set(False)
         self.close()
+
+    def set(self, key, value):
+        if value == Qt.Checked:
+            self.config[key] = 'true'
+        elif value == Qt.Unchecked:
+            self.config[key] = 'false'
+
+    def unlink(self, session):
+        session.unlink()
+        self.closeEvent(None)
+        self.parent.closeEvent(None)
 
 class GrabWindow(QWidget):
     disabled = Reference(False)
@@ -234,6 +295,7 @@ class GrabWindow(QWidget):
         self.setGeometry(0, 0, self.screen.width(), self.screen.height())
 
         self.setWindowTitle("JamCrop")
+        self.setWindowIcon(QIcon(ICON))
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setWindowFlags(Qt.FramelessWindowHint)
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)

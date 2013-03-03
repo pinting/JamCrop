@@ -1,7 +1,7 @@
 <config>
     <notification>true</notification>
-    <browser>true</browser>
+    <browser>false</browser>
     <short>false</short>
     <copy>true</copy>
-    <token>oauth_token_secret=gqrjjmbtpk4vdar&amp;oauth_token=708vswxlm0kkgvn&amp;uid=4213669</token>
+    <token>oauth_token_secret=o79q605f69n91bz&amp;oauth_token=mg4mu2ezm4mujty&amp;uid=4213669</token>
 </config>
