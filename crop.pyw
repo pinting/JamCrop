@@ -407,8 +407,8 @@ class GrabWindow(Tkinter.Tk):
             webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
                             urllib.urlencode({'oauth_token' : request_token['oauth_token']})))
 
-            if tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop require a limited Dropbox"
-                                                                     " access for itself. If you allowed the "
+            if tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop requires a limited Dropbox "
+                                                                     "access for itself. If you allowed the "
                                                                      "connection to the Dropbox, from the recently "
                                                                      "appeared browser window, please click on the "
                                                                      "OK button. After the grab window have appeared, "
