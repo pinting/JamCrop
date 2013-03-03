@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 
 __author__ = "Tornyi Dénes"
-__version__ = "1.0.0"
+__version__ = "1.0.3"
 
 
 SERVER = 'jamcropxy.appspot.com'
@@ -245,13 +245,13 @@ class Config(ElementTree):
         self.write(self.name)
 
 
-class Tooltip(Tkinter.Toplevel, Window):
+class Notification(Tkinter.Toplevel, Window):
     def __init__(self, parent, message, timeout = 1500):
 
-        """ Initializing a tooltip window
+        """ Initializing a notification window
         :param parent: The parent window
-        :param message: Message which will show in the window
-        :param timeout: Timeout of the window
+        :param message: Message which will show in the notification
+        :param timeout: Timeout of the notification
         """
 
         Tkinter.Toplevel.__init__(self, parent, bg = 'white')
@@ -262,11 +262,12 @@ class Tooltip(Tkinter.Toplevel, Window):
         self.attributes('-alpha', 0.65)
         self.wm_attributes("-topmost", 1)
 
-        self.bind("<Button-1>", lambda event: self.destroy())
-        self.after(timeout, self.destroy)
+        self.bind("<Button-1>", lambda event: self.quit())
+        self.after(timeout, self.quit)
 
         message = self.label(self, 5, 0, message)
         message.config(bg = "white", fg = "black")
+
 
 
 class SettingsWindow(Tkinter.Toplevel, Window):
@@ -422,8 +423,8 @@ class GrabWindow(Tkinter.Tk):
 
         """ Closing function for the grab window """
 
-        self.destroy()
         self.config.save()
+        self.destroy()
 
     def autoFocus(self):
 
@@ -525,7 +526,7 @@ class GrabWindow(Tkinter.Tk):
             webbrowser.open(result['url'])
 
         if self.config['tooltip'] == 'true':
-            alert = Tooltip(self, "Uploading is completed", 2500)
+            alert = Notification(self, "Uploading is completed", 2500)
             alert.geometry("%dx%d%+d%+d" % (140, 23, self.winfo_screenwidth() - 140, 0))
             alert.mainloop()
 
