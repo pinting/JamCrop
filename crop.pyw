@@ -158,17 +158,35 @@ class Config(ElementTree):
 
 class Window(QWidget):
     def center(self):
+
+        """ Move the window to the center """
+
         frame = self.frameGeometry()
         screen = QDesktopWidget().availableGeometry().center()
         frame.moveCenter(screen)
         self.move(frame.topLeft())
 
     def label(self, msg, x, y):
+
+        """ Create a new label
+        :param msg: Content of the label
+        :param x: First horizontal pixel
+        :param y: First vertical pixel
+        """
+
         label = QLabel(msg, self)
         label.move(x, y)
         return label
 
     def button(self, title, x, y, onclick = False):
+
+        """ Create a new button
+        :param title: Title of the button
+        :param x: First horizontal pixel
+        :param y: First vertical pixel
+        :param onclick: A function for processing the results
+        """
+
         button = QPushButton(title, self)
         button.resize(button.sizeHint())
         button.move(x, y)
@@ -179,6 +197,16 @@ class Window(QWidget):
         return button
 
     def field(self, x, y, w, h, value = False, action = False):
+
+        """ Create a new field
+        :param x: First horizontal pixel
+        :param y: First vertical pixel
+        :param w: Width of the field
+        :param h: Height of the field
+        :param value: Default value
+        :param action: A function for processing the changes
+        """
+
         field = QLineEdit(self)
         field.setMaxLength(64)
         field.move(x, y)
@@ -192,6 +220,14 @@ class Window(QWidget):
         return field
 
     def check(self, desc, x, y, action = False):
+
+        """ Create a new checkbox
+        :param desc: The description of the checkbox
+        :param x: First horizontal pixel
+        :param y: First vertical pixel
+        :param action: A function for processing the results
+        """
+
         check = QCheckBox(desc, self)
         check.move(x, y)
 
@@ -203,6 +239,14 @@ class Window(QWidget):
 
 class Notification(QSystemTrayIcon):
     def __init__(self, title, msg, icon, parent = None):
+
+        """ Initializing a notification
+        :param title: Title of the notification
+        :param msg: Message of the notification
+        :param icon: Icon of the application on the system tray
+        :param parent: The parent window
+        """
+
         QSystemTrayIcon.__init__(self, parent)
         self.setIcon(QIcon(icon))
         self.show()
@@ -215,6 +259,14 @@ class SettingsWindow(Window):
     status = None
 
     def __init__(self, parent, session, config, status = Reference(False)):
+
+        """ Initializing the settings window
+        :param parent: The parent window
+        :param session: Current session
+        :param config: Current config
+        :param status: Status of the parent window
+        """
+
         Window.__init__(self)
         self.config = config
         self.status = status
@@ -267,20 +319,37 @@ class SettingsWindow(Window):
         self.status.set(True)
 
     def closeEvent(self, event):
+
+        """ Closing function of the settings
+        :param event: The event which started the function
+        """
+
         self.parent.activateWindow()
         self.status.set(False)
         self.close()
 
     def set(self, key, value):
+
+        """ Set a settings parameter
+        :param key: Name of the parameter
+        :param value: Value of the parameter (0 or 2)
+        """
+
         if value == Qt.Checked:
             self.config[key] = 'true'
         elif value == Qt.Unchecked:
             self.config[key] = 'false'
 
     def unlink(self, session):
+
+        """ Unlink client from the server, and close every window
+        :param session: Status of the settings window
+        """
+
         session.unlink()
         self.closeEvent(None)
         self.parent.closeEvent(None)
+
 
 class GrabWindow(QWidget):
     disabled = Reference(False)
@@ -289,6 +358,9 @@ class GrabWindow(QWidget):
     shape = None
 
     def __init__(self):
+
+        """ Initializing the grab window """
+
         super(GrabWindow, self).__init__()
         self.config = Config(CONFIG)
 
@@ -306,26 +378,34 @@ class GrabWindow(QWidget):
 
         self.session = Connection(self.config)
 
-        if(not self.session.load()):
+        if not self.session.load():
             request_token = self.session.authorize()
             webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
-                                       urllib.urlencode({'oauth_token' : request_token['oauth_token']})))
+                                       urllib.urlencode({'oauth_token': request_token['oauth_token']})))
 
             reply = QMessageBox.question(self, "JamCrop", "The JamCrop require a limited Dropbox"
-                                                                " access for itself. If you allowed the "
-                                                                "connection to the Dropbox, from the recently "
-                                                                "appeared browser window, please click on the "
-                                                                "OK button. After the grab window have appeared, "
-                                                                "you can open settings by pressing [F1].",
-                                         QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
-            if reply == QMessageBox.Yes:
+                                                          "access for itself. If you allowed the "
+                                                          "connection to the Dropbox, from the recently "
+                                                          "appeared browser window, please click on the "
+                                                          "OK button. After the grab window have appeared, "
+                                                          "you can open settings by pressing [F1].",
+                                         QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Cancel)
+
+            if reply == QMessageBox.Ok:
                 self.session.access()
-            else: return
+            else:
+                self.closeEvent(None)
+                sys.exit()
 
         self.activateWindow()
         self.show()
 
     def paintEvent(self, event):
+
+        """ Draw an invisible layer which is clickable
+        :param event: The event which started the function
+        """
+
         canvas = QPainter()
         canvas.begin(self)
         canvas.setPen(QColor(0, 0, 0, 1))
@@ -334,30 +414,57 @@ class GrabWindow(QWidget):
         canvas.end()
 
     def closeEvent(self, event):
+
+        """ Closing function of the grab window
+        :param event: The event which started the function
+        """
+
         self.config.save()
         self.close()
 
     def keyPressEvent(self, event):
+
+        """ Track the key presses
+        :param event: The event which started the function
+        """
+
         if event.key() == Qt.Key_F1:
             self.settings = SettingsWindow(self, self.session, self.config, self.disabled)
         elif event.key() == Qt.Key_Escape:
             self.closeEvent(None)
 
     def mousePressEvent(self, event):
+
+        """ Start selecting rectangle drawing after the mouse have pressed
+        :param event: Created by the pressed mouse
+        """
+
         if not self.disabled.get():
             self.origin = event.pos()
             self.shape.setGeometry(QRect(self.origin, QSize()))
             self.shape.show()
         else:
             self.settings.activateWindow()
+
         QWidget.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):
+
+        """ Draw the selecting rectangle by the mouse coordinates
+        :param event: Created by the moving of the mouse
+        """
+
         if not self.disabled.get() and self.shape.isVisible():
             self.shape.setGeometry(QRect(self.origin, event.pos()).normalized())
+
         QWidget.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
+
+        """ Create the screenshot after the mouse have released
+        :param event: Created by the released mouse
+        """
+
         if not self.disabled.get() and self.shape.isVisible():
             self.shape.hide()
             self.hide()
