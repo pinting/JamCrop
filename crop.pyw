@@ -17,6 +17,7 @@ from xml.etree.ElementTree import ElementTree
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import webbrowser
+import pyperclip
 import urlparse
 import urllib2
 import urllib
@@ -201,11 +202,11 @@ class Window(QWidget):
 
 
 class Notification(QSystemTrayIcon):
-    def __init__(self, title, msg, icon, timeout = 2500, parent = None):
+    def __init__(self, title, msg, icon, parent = None):
         QSystemTrayIcon.__init__(self, parent)
         self.setIcon(QIcon(icon))
         self.show()
-        self.showMessage(title, msg, msecs = timeout)
+        self.showMessage(title, msg)
 
 
 class SettingsWindow(Window):
@@ -335,7 +336,6 @@ class GrabWindow(QWidget):
     def closeEvent(self, event):
         self.config.save()
         self.close()
-        sys.exit()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F1:
@@ -376,13 +376,15 @@ class GrabWindow(QWidget):
                 result['url'] += '?dl=1'
 
             if self.config['copy'] == 'true':
-                QApplication.clipboard().setText(QString(result['url']), QClipboard.Clipboard)
+                pyperclip.copy(result['url'])
 
             if self.config['browser'] == 'true':
                 webbrowser.open(result['url'])
 
             if self.config['notification'] == 'true':
                 self.alert = Notification("JamCrop", "Uploading is completed", ICON)
+                time.sleep(2.5)
+                self.alert.hide()
 
             self.closeEvent(None)
 
