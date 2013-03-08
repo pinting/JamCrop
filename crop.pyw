@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-from PyQt4 import Qt
 
 __author__ = "Tornyi Dénes"
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 
-SERVER = 'jamcropxy.appspot.com'
+SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
 CONFIG = 'config.xml'
 ICON = 'icon.ico'
+NOTIFICATION_TIMEOUT = 2.5
 
 
 from poster.streaminghttp import register_openers
@@ -67,7 +67,7 @@ class Connection:
 
         """ Get a request token """
 
-        result = urllib2.urlopen('https://%s/authorize' % SERVER)
+        result = urllib2.urlopen('https://%s/authorize' % self.config['server'])
         self.request_token = dict(urlparse.parse_qsl(result.read()))
         return self.request_token
 
@@ -75,7 +75,8 @@ class Connection:
 
         """ Get an access token with the request token """
 
-        result = urllib2.urlopen('%s?%s' % ('https://%s/access' % SERVER, urllib.urlencode(self.request_token)))
+        result = urllib2.urlopen('%s?%s' % ('https://%s/access' %  self.config['server'],
+                                            urllib.urlencode(self.request_token)))
         self.access_token = dict(urlparse.parse_qsl(result.read()))
         self.config['token'] = urllib.urlencode(self.access_token)
         return self.access_token
@@ -102,7 +103,7 @@ class Connection:
         """
 
         body, headers = multipart_encode({'body': open(fileName, 'rb')})
-        request = urllib2.Request('%s?%s' % ('https://%s/upload' % SERVER,
+        request = urllib2.Request('%s?%s' % ('https://%s/upload' % self.config['server'],
                                              urllib.urlencode(dict(self.access_token.items() +
                                                                    dict({'name': fileName}).items()))), body, headers)
         return json.loads(urllib2.urlopen(request).read())
@@ -114,7 +115,7 @@ class Connection:
         :param short: Get short or long URL
         """
 
-        request = urllib2.Request('%s?%s' % ('https://%s/share' % SERVER,
+        request = urllib2.Request('%s?%s' % ('https://%s/share' % self.config['server'],
                                              urllib.urlencode(dict(self.access_token.items() +
                                                                    dict({'name': fileName, 'short': short}).items()))))
         return json.loads((urllib2.urlopen(request)).read())
@@ -192,7 +193,7 @@ class Window(QWidget):
         button.move(x, y)
 
         if onclick:
-            button.clicked.connect(onclick);
+            button.clicked.connect(onclick)
 
         return button
 
@@ -236,6 +237,25 @@ class Window(QWidget):
 
         return check
 
+    def combo(self, x, y, values, action = False):
+
+        """ Create a new list
+        :param values: List of possible values
+        :param x: First horizontal pixel
+        :param y: First vertical pixel
+        :param action: A function for processing the results
+        """
+
+        combo = QComboBox(self)
+        combo.setEditable(True)
+        combo.addItems(values)
+        combo.move(x, y)
+
+        if action:
+            combo.editTextChanged.connect(action)
+
+        return combo
+
 
 class Notification(QSystemTrayIcon):
     def __init__(self, title, msg, icon, parent = None):
@@ -272,7 +292,7 @@ class SettingsWindow(Window):
         self.status = status
         self.parent = parent
 
-        self.resize(130, 140)
+        self.resize(160, 165)
         self.center()
 
         self.setWindowTitle("Settings")
@@ -304,15 +324,20 @@ class SettingsWindow(Window):
 
         # Create the direct link activator checkbox
 
-        short = self.check('Use direct link', 7, 80, action = lambda event: self.set('short', event))
+        short = self.check('Use direct link', 7, 80, action = lambda event: self.set('direct', event))
 
-        if self.config['short'] == 'true':
+        if self.config['direct'] == 'true':
             short.setChecked(True)
+
+        # Create the server list
+
+        servers = self.combo(6, 105, SERVERS, self.changeServer)
+        servers.resize(148, 22)
 
         # Create the button to unlink the client
 
-        unlink = self.button("Unlink client", 5, 105, lambda event: self.unlink(session))
-        unlink.resize(120, 30)
+        unlink = self.button("Unlink client", 5, 130, lambda event: self.unlink(session))
+        unlink.resize(150, 30)
 
         self.show()
         self.activateWindow()
@@ -327,6 +352,14 @@ class SettingsWindow(Window):
         self.parent.activateWindow()
         self.status.set(False)
         self.close()
+
+    def changeServer(self, value):
+
+        """ Change the server parameter
+        :param value: The new server address
+        """
+
+        self.config['server'] = unicode(value)
 
     def set(self, key, value):
 
@@ -477,10 +510,11 @@ class GrabWindow(QWidget):
             self.session.upload(fileName)
             os.unlink(fileName)
 
-            result = self.session.share(fileName, self.config['short'])
-
-            if self.config['short'] == 'false':
+            if self.config['direct'] == 'true':
+                result = self.session.share(fileName, 'false')
                 result['url'] += '?dl=1'
+            else:
+                result = self.session.share(fileName, 'true')
 
             if self.config['copy'] == 'true':
                 pyperclip.copy(result['url'])
@@ -490,7 +524,7 @@ class GrabWindow(QWidget):
 
             if self.config['notification'] == 'true':
                 self.alert = Notification("JamCrop", "Uploading is completed", ICON)
-                time.sleep(2.5)
+                time.sleep(NOTIFICATION_TIMEOUT)
                 self.alert.hide()
 
             self.closeEvent(None)

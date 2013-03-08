@@ -1,7 +1,8 @@
 <config>
+    <server>jamcropxy-pinting.rhcloud.com</server>
     <notification>true</notification>
-    <browser>false</browser>
-    <short>false</short>
+    <browser>true</browser>
+    <direct>true</direct>
     <copy>true</copy>
-    <token>oauth_token_secret=ecpg65gmlim8yy8&amp;oauth_token=rdemnrakosit9b9&amp;uid=4213669</token>
+    <token>oauth_token_secret=5r76ywq9iq17h47&amp;oauth_token=8cnpvb4mxyxi70e&amp;uid=4213669</token>
 </config>
