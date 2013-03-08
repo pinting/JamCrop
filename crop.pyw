@@ -342,8 +342,8 @@ class SettingsWindow(Window):
         # Create the server list
 
         servers = self.combo(6, 105, SERVERS, lambda event: self.change('server', event))
-        servers.resize(148, 22)
         servers.setEditText(self.config['server'])
+        servers.resize(148, 22)
 
         # Create unlink button
 
@@ -417,9 +417,9 @@ class GrabWindow(QWidget):
             webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
                                        urllib.urlencode({'oauth_token': request_token['oauth_token']})))
 
-            reply = QMessageBox.question(self, "JamCrop", "The JamCrop require a limited Dropbox"
+            reply = QMessageBox.question(self, "JamCrop", "The JamCrop requires a limited Dropbox "
                                                           "access for itself. If you allowed the "
-                                                          "connection to the Dropbox, from the recently "
+                                                          "connection to your Dropbox, from the recently "
                                                           "appeared browser window, please click on the "
                                                           "OK button. After the grab window have appeared, "
                                                           "you can open settings by pressing [F1].",
