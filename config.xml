@@ -1,8 +1,8 @@
 <config>
-    <server>jamcropxy-pinting.rhcloud.com</server>
-    <notification>true</notification>
-    <browser>true</browser>
-    <direct>true</direct>
-    <copy>true</copy>
-    <token>oauth_token_secret=5r76ywq9iq17h47&amp;oauth_token=8cnpvb4mxyxi70e&amp;uid=4213669</token>
+    <server>jamcropxy.appspot.com</server>
+    <notification>2</notification>
+    <browser>2</browser>
+    <direct>2</direct>
+    <copy>2</copy>
+    <token>oauth_token_secret=xyeeccsy9th29pk&amp;oauth_token=9h7ki9rc701brxf&amp;uid=4213669</token>
 </config>

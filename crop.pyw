@@ -8,7 +8,7 @@ __version__ = "2.0.0"
 SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
 CONFIG = 'config.xml'
 ICON = 'icon.ico'
-NOTIFICATION_TIMEOUT = 2.5
+TIMEOUT = 2.5
 
 
 from poster.streaminghttp import register_openers
@@ -88,7 +88,8 @@ class Connection:
         if self.config['token'] is not None:
             self.access_token = dict(urlparse.parse_qsl(self.config['token']))
             return True
-        else: return False
+        else:
+            return False
 
     def unlink(self):
 
@@ -135,20 +136,29 @@ class Config(ElementTree):
 
     def __setitem__(self, key, value):
 
-        """ Set an item of the file
+        """ Set an item
         :param key: Name of the item
         :param value: Value of the item
         """
 
-        self._root.find(key).text = value
+        if value is not None:
+            self._root.find(key).text = unicode(value)
+        else:
+            self._root.find(key).text = None
 
     def __getitem__(self, key):
 
-        """ Get an item of the file
+        """ Get an item
         :param key: Name of the item
         """
 
-        return self._root.find(key).text
+        try:
+            if int(self._root.find(key).text) == float(self._root.find(key).text):
+                return int(self._root.find(key).text)
+            else:
+                return float(self._root.find(key).text)
+        except (ValueError, TypeError):
+            return self._root.find(key).text
 
     def save(self):
 
@@ -197,14 +207,14 @@ class Window(QWidget):
 
         return button
 
-    def field(self, x, y, w, h, value = False, action = False):
+    def field(self, x, y, w, h, default = False, action = False):
 
         """ Create a new field
         :param x: First horizontal pixel
         :param y: First vertical pixel
         :param w: Width of the field
         :param h: Height of the field
-        :param value: Default value
+        :param default: Default value
         :param action: A function for processing the changes
         """
 
@@ -213,8 +223,8 @@ class Window(QWidget):
         field.move(x, y)
         field.resize(w, h)
 
-        if value:
-            field.setText(value)
+        if default:
+            field.setText(default)
         if action:
             field.textEdited.connect(action)
 
@@ -233,7 +243,7 @@ class Window(QWidget):
         check.move(x, y)
 
         if action:
-            check.stateChanged.connect(action);
+            check.stateChanged.connect(action)
 
         return check
 
@@ -303,38 +313,39 @@ class SettingsWindow(Window):
 
         # Create the automatic URL copy checkbox
 
-        copy = self.check('Automatic URL copy', 7, 5, lambda event: self.set('copy', event))
+        copy = self.check('Automatic URL copy', 7, 5, lambda event: self.change('copy', event))
 
-        if self.config['copy'] == 'true':
+        if self.config['copy'] == Qt.Checked:
             copy.setChecked(True)
 
         # Create the browser behavior checkbox
 
-        browser = self.check('Open in the browser', 7, 30, lambda event: self.set('browser', event))
+        browser = self.check('Open in the browser', 7, 30, lambda event: self.change('browser', event))
 
-        if self.config['browser'] == 'true':
+        if self.config['browser'] == Qt.Checked:
             browser.setChecked(True)
 
         # Create the tooltip behavior checkbox
 
-        notification = self.check('Show notification', 7, 55, lambda event: self.set('notification', event))
+        notification = self.check('Show notification', 7, 55, lambda event: self.change('notification', event))
 
-        if self.config['notification'] == 'true':
+        if self.config['notification'] == Qt.Checked:
             notification.setChecked(True)
 
         # Create the direct link activator checkbox
 
-        short = self.check('Use direct link', 7, 80, action = lambda event: self.set('direct', event))
+        short = self.check('Use direct link', 7, 80, lambda event: self.change('direct', event))
 
-        if self.config['direct'] == 'true':
+        if self.config['direct'] == Qt.Checked:
             short.setChecked(True)
 
         # Create the server list
 
-        servers = self.combo(6, 105, SERVERS, self.changeServer)
+        servers = self.combo(6, 105, SERVERS, lambda event: self.change('server', event))
         servers.resize(148, 22)
+        servers.setEditText(self.config['server'])
 
-        # Create the button to unlink the client
+        # Create unlink button
 
         unlink = self.button("Unlink client", 5, 130, lambda event: self.unlink(session))
         unlink.resize(150, 30)
@@ -353,25 +364,15 @@ class SettingsWindow(Window):
         self.status.set(False)
         self.close()
 
-    def changeServer(self, value):
-
-        """ Change the server parameter
-        :param value: The new server address
-        """
-
-        self.config['server'] = unicode(value)
-
-    def set(self, key, value):
+    def change(self, key, value):
 
         """ Set a settings parameter
         :param key: Name of the parameter
-        :param value: Value of the parameter (0 or 2)
+        :param value: Value of the parameter
         """
 
-        if value == Qt.Checked:
-            self.config[key] = 'true'
-        elif value == Qt.Unchecked:
-            self.config[key] = 'false'
+        if value and key:
+            self.config[key] = value
 
     def unlink(self, session):
 
@@ -507,24 +508,28 @@ class GrabWindow(QWidget):
             shot = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
             shot.save(fileName, 'jpg')
 
-            self.session.upload(fileName)
-            os.unlink(fileName)
+            try:
+                self.session.upload(fileName)
+            except:
+                self.closeEvent(None)
+            finally:
+                os.unlink(fileName)
 
-            if self.config['direct'] == 'true':
+            if self.config['direct'] == Qt.Checked:
                 result = self.session.share(fileName, 'false')
                 result['url'] += '?dl=1'
             else:
                 result = self.session.share(fileName, 'true')
 
-            if self.config['copy'] == 'true':
+            if self.config['copy'] == Qt.Checked:
                 pyperclip.copy(result['url'])
 
-            if self.config['browser'] == 'true':
+            if self.config['browser'] == Qt.Checked:
                 webbrowser.open(result['url'])
 
-            if self.config['notification'] == 'true':
+            if self.config['notification'] == Qt.Checked:
                 self.alert = Notification("JamCrop", "Uploading is completed", ICON)
-                time.sleep(NOTIFICATION_TIMEOUT)
+                time.sleep(TIMEOUT)
                 self.alert.hide()
 
             self.closeEvent(None)
