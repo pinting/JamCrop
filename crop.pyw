@@ -23,6 +23,7 @@ import urllib2
 import urllib
 import json
 import time
+import sys
 import os
 
 
@@ -437,7 +438,8 @@ class GrabWindow(Tkinter.Tk):
                                                                      "OK button. After the grab window has appeared, "
                                                                      "you can open settings by pressing [F1]."):
                 self.session.access()
-            else: return
+            else:
+                self.deleteEvent()
 
         self.update()
         self.deiconify()
@@ -448,6 +450,7 @@ class GrabWindow(Tkinter.Tk):
 
         self.config.save()
         self.destroy()
+        sys.exit()
 
     def autoFocus(self):
 

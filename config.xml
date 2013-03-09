@@ -2,7 +2,7 @@
     <server>jamcropxy.appspot.com</server>
     <notification>true</notification>
     <browser>true</browser>
-    <direct>true</direct>
+    <direct>false</direct>
     <copy>true</copy>
-    <token />
+    <token>oauth_token_secret=r4q27vezdaovy0a&amp;oauth_token=jx1obw9bd0p0his&amp;uid=4213669</token>
 </config>
