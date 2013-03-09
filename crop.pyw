@@ -2,7 +2,7 @@
 #-*- coding: utf-8 -*-
 
 __author__ = "Tornyi Dénes"
-__version__ = "2.0.0"
+__version__ = "2.0.1"
 
 
 SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
