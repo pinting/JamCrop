@@ -371,7 +371,7 @@ class SettingsWindow(Window):
         :param value: Value of the parameter
         """
 
-        if value and key:
+        if str(key):
             self.config[key] = value
 
     def unlink(self, session):
