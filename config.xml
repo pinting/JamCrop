@@ -1,7 +1,8 @@
 <config>
+    <server>jamcropxy.appspot.com</server>
+    <notification>true</notification>
     <browser>true</browser>
-    <tooltip>true</tooltip>
-    <short>false</short>
+    <direct>true</direct>
     <copy>true</copy>
     <token />
 </config>
