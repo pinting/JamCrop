@@ -11,15 +11,16 @@ ICON = 'icon.ico'
 
 
 from poster.streaminghttp import register_openers
-from poster.encode import multipart_encode
 from xml.etree.ElementTree import ElementTree
-from pil import ImageGrab
+from poster.encode import multipart_encode
+from PIL import ImageGrab
 import tkMessageBox
 import webbrowser
 import urlparse
 import Tkinter
 import urllib2
 import urllib
+import thread
 import json
 import time
 import os
@@ -376,7 +377,7 @@ class GrabWindow(Tkinter.Tk):
     disabled = Reference(False)
     session = None
     config = None
-    square = None
+    rect = None
     last = False
     x, y, = 0, 0
 
@@ -388,16 +389,20 @@ class GrabWindow(Tkinter.Tk):
         self.config = Config(CONFIG)
 
         self.protocol('WM_DELETE_WINDOW', self.deleteEvent)
-        self.configure(background = 'white')
-        self.wm_attributes("-topmost", 1)
+        self.configure(background = 'black')
+        #self.wm_attributes("-topmost", 1)
         self.attributes('-fullscreen', 1)
-        self.attributes('-alpha', 0.15)
+        self.attributes('-alpha', 0.1)
         self.wm_iconbitmap(ICON)
         self.title(u"JamCrop")
 
+        #thread.start_new_thread(self.initRect, (self, ))
+
+        #print('thread is running...')
+
         self.bind("<Button-1>", self.click)
         self.bind_all('<Key>', self.keyPress)
-        self.square = Tkinter.Canvas(self, width = 0, height = 0, bg = 'black')
+        #self.rect = Tkinter.Canvas(self, width = 0, height = 0, bg = 'black')
 
         self.withdraw()
         self.session = Connection(self.config)
@@ -430,7 +435,7 @@ class GrabWindow(Tkinter.Tk):
 
         """ Automatic focus for the grab window """
 
-        if self.disabled.get():
+        if self.disabled.get() or True:
             self.wm_attributes("-topmost", 0)
         else:
             self.wm_attributes("-topmost", 1)
@@ -450,26 +455,40 @@ class GrabWindow(Tkinter.Tk):
             config = SettingsWindow(self, self.session, self.config, self.disabled)
             config.mainloop()
 
-    def drawSquare(self, event):
+    def initRect(self, parent):
 
-        """ Draw the selecting square on to the grab window
+        """ Init the selecting rectangle on to the grab window
         :param event: The event which started the function
         """
 
+        self.rect = Tkinter.Toplevel()
+        self.rect.resizable(width = 'false', height = 'false')
+        self.attributes('-toolwindow', 1)
+        self.rect.configure(background = 'blue')
+        self.rect.wm_attributes("-topmost", 1)
+        self.rect.attributes('-alpha', 0.30)
+        self.rect.geometry("%dx%d%+d%+d" % (1, 0, 0, 0))
+        self.rect.overrideredirect(1)
+        self.rect.mainloop()
+
+    def drawRect(self, event):
+
+        """ Draw the selecting rectangle on to the grab window
+        :param event: The event which started the function
+        """
+
+        self.initRect()
         if self.x < event.x_root and self.y < event.y_root:
-            self.square.config(width = event.x_root - self.x, height = event.y_root - self.y)
-            self.square.place(x = self.x, y = self.y)
-        elif self.x > event.x_root and self.y > event.y_root:
-            self.square.config(width = self.x - event.x_root, height = self.y - event.y_root)
-            self.square.place(x = event.x_root, y = event.y_root)
-        elif self.x < event.x_root and self.y > event.y_root:
-            self.square.config(width = event.x_root - self.x, height = self.y - event.y_root)
-            self.square.place(x = self.x, y = event.y_root)
-        elif self.x > event.x_root and self.y < event.y_root:
-            self.square.config(width = self.x - event.x_root, height = event.y_root - self.y)
-            self.square.place(x = event.x_root, y = self.y)
-        else:
-            self.square.place_forget()
+            print("%dx%d%+d%+d" % (event.x_root - self.x, event.y_root - self.y, self.x, self.y))
+            self.rect.geometry("%dx%d%+d%+d" % (event.x_root - self.x, event.y_root - self.y, self.x, self.y))
+        #elif self.x > event.x_root and self.y > event.y_root:
+        #    self.rect.geometry("%dx%d%+d%+d" % (self.x - event.x_root, self.y - event.y_root, event.x_root, event.y_root))
+        #elif self.x < event.x_root and self.y > event.y_root:
+        #    self.rect.geometry("%dx%d%+d%+d" % (event.x_root - self.x, self.y - event.y_root, self.x, event.y_root))
+        #elif self.x > event.x_root and self.y < event.y_root:
+        #    self.rect.geometry("%dx%d%+d%+d" % (self.x - event.x_root, event.y_root - self.y, event.x_root, self.y))
+        #else:
+        #    self.rect.place_forget()
 
     def click(self, event):
 
@@ -478,10 +497,12 @@ class GrabWindow(Tkinter.Tk):
         """
 
         if(not self.disabled.get() and not self.last):
-            self.bind("<Motion>", self.drawSquare)
+            print('coordinates...')
             self.x = event.x_root
             self.y = event.y_root
+            print("+%d+%d" % (self.x, self.y))
             self.last = True
+            self.bind("<Motion>", self.drawSquare)
         elif(not self.disabled.get()):
             if self.x < event.x_root and self.y < event.y_root:
                 self.grab(self.x, self.y, event.x_root, event.y_root)
@@ -493,7 +514,7 @@ class GrabWindow(Tkinter.Tk):
                 self.grab(event.x_root, self.y, self.x, event.y_root)
             else:
                 self.unbind("<Motion>")
-                self.square.place_forget()
+                self.rect.place_forget()
                 self.last = False
 
     def grab(self, x, y, w, h):
@@ -505,6 +526,7 @@ class GrabWindow(Tkinter.Tk):
         :param h: Height of the image
         """
 
+        self.deleteEvent()
         self.withdraw()
 
         fileName = "%s.jpg" % str(time.strftime('%Y_%m_%d_%H_%M_%S'))
