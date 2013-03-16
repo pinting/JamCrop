@@ -117,8 +117,8 @@ class Connection:
         """
 
         request = urllib2.Request('%s?%s' % ('https://%s/share' % self.config['server'],
-                                  urllib.urlencode(dict(self.access_token.items() +
-                                                        dict({'name': fileName, 'short': short}).items()))))
+                                             urllib.urlencode(dict(self.access_token.items() +
+                                                                   dict({'name': fileName, 'short': short}).items()))))
         return json.loads((urllib2.urlopen(request)).read())
 
 
@@ -293,7 +293,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         :param status: Status of the parent window
         """
 
-        Tkinter.Toplevel.__init__(self, parent, width = 175, height = 175)
+        Tkinter.Toplevel.__init__(self, parent, width = 160, height = 175)
         self.config = config
 
         self.protocol('WM_DELETE_WINDOW', lambda: self.deleteEvent(status))
@@ -302,53 +302,53 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         self.wm_attributes("-topmost", 1)
         self.title(u"Settings")
         self.wm_iconbitmap(ICON)
-        self.geometry('%dx%d+%d+%d' % (175, 175, self.winfo_screenwidth() / 2 - 87,
+        self.geometry('%dx%d+%d+%d' % (160, 175, self.winfo_screenwidth() / 2 - 80,
                                        self.winfo_screenheight() / 2 - 87))
 
         # Create the automatic URL copy checkbox
 
-        self.label(self, 5, 5, "Automatic URL copy:")
-
         copyValue = Tkinter.StringVar()
-        copyCheck = self.check(self, 150, 5, copyValue, 'true', 'false')
+        copyCheck = self.check(self, 5, 5, copyValue, 'true', 'false')
         copyValue.trace(callback = lambda varName, elementName, mode: self.set('copy', copyValue), mode = 'w')
 
         if self.config['copy'] == 'false':
             copyCheck.deselect()
 
+        self.label(self, 25, 7, "Automatic URL copy")
+
         # Create the browser behavior checkbox
 
-        self.label(self, 5, 30, "Open in the browser:")
-
         browserValue = Tkinter.StringVar()
-        browserCheck = self.check(self, 150, 30, browserValue, 'true', 'false')
+        browserCheck = self.check(self, 5, 30, browserValue, 'true', 'false')
         browserValue.trace(callback = lambda varName, elementName, mode: self.set('browser', browserValue), mode = 'w')
 
         if self.config['browser'] == 'false':
             browserCheck.deselect()
 
+        self.label(self, 25, 32, "Open in the browser")
+
         # Create the notification behavior checkbox
 
-        self.label(self, 5, 55, "Show notification:")
-
         notificationValue = Tkinter.StringVar()
-        notificationCheck = self.check(self, 150, 55, notificationValue, 'true', 'false')
+        notificationCheck = self.check(self, 5, 55, notificationValue, 'true', 'false')
         notificationValue.trace(callback = lambda varName, elementName, mode: self.set('notification',
                                                                                        notificationValue), mode = 'w')
 
         if self.config['notification'] == 'false':
             notificationCheck.deselect()
 
+        self.label(self, 25, 57, "Show notification")
+
         # Create the direct link activator checkbox
 
-        self.label(self, 5, 80, "Use direct link:")
-
         shortValue = Tkinter.StringVar()
-        shortCheck = self.check(self, 150, 80, shortValue, 'true', 'false')
+        shortCheck = self.check(self, 5, 80, shortValue, 'true', 'false')
         shortValue.trace(callback = lambda varName, elementName, mode: self.set('direct', shortValue), mode = 'w')
 
         if self.config['direct'] == 'false':
             shortCheck.deselect()
+
+        self.label(self, 25, 82, "Use direct link")
 
         # Create the server list
 
@@ -356,11 +356,11 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         serverValue.set(self.config['server'])
         serverValue.trace(callback = lambda varName, elementName, mode: self.set('server', serverValue), mode = 'w')
 
-        self.menu(self, 6, 105, 20, serverValue, SERVERS)
+        self.menu(self, 6, 105, 17, serverValue, SERVERS)
 
         # Create the unlink button
 
-        button = self.button(self, 5, 140, 22, text = "Unlink client")
+        button = self.button(self, 7, 140, 19, text = "Unlink client")
         button.bind("<Button-1>", lambda event: self.unlink(parent, session))
 
         status.set(True)
@@ -400,8 +400,8 @@ class GrabWindow(Tkinter.Tk):
     disabled = Reference(False)
     session = None
     config = None
-    square = None
     last = False
+    rect = None
     x, y, = 0, 0
 
     def __init__(self):
@@ -412,16 +412,15 @@ class GrabWindow(Tkinter.Tk):
         self.config = Config(CONFIG)
 
         self.protocol('WM_DELETE_WINDOW', self.deleteEvent)
-        self.configure(background = 'white')
+        self.configure(background = 'black')
         self.wm_attributes("-topmost", 1)
         self.attributes('-fullscreen', 1)
-        self.attributes('-alpha', 0.2)
+        self.attributes('-alpha', 0.01)
         self.wm_iconbitmap(ICON)
         self.title(u"JamCrop")
 
         self.bind("<Button-1>", self.click)
         self.bind_all('<Key>', self.keyPress)
-        self.square = Tkinter.Canvas(self, width = 0, height = 0, bg = 'blue', bd = 0)
 
         self.withdraw()
         self.session = Connection(self.config)
@@ -429,7 +428,7 @@ class GrabWindow(Tkinter.Tk):
         if not self.session.load():
             request_token = self.session.authorize()
             webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
-                            urllib.urlencode({'oauth_token': request_token['oauth_token']})))
+                                       urllib.urlencode({'oauth_token': request_token['oauth_token']})))
 
             if tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop requires a limited Dropbox "
                                                                      "access for itself. If you allowed the "
@@ -476,26 +475,37 @@ class GrabWindow(Tkinter.Tk):
             config = SettingsWindow(self, self.session, self.config, self.disabled)
             config.mainloop()
 
-    def drawSquare(self, event):
+    def initRect(self, event):
 
-        """ Draw the selecting square on to the grab window
+        """ Init the selecting rectangle on to the grab window
+        :param event: The event which started the function
+        """
+
+        self.rect = Tkinter.Toplevel()
+        self.rect.resizable(width = 'false', height = 'false')
+        self.attributes('-toolwindow', 1)
+        self.rect.configure(background = 'blue')
+        self.rect.wm_attributes("-topmost", 1)
+        self.rect.attributes('-alpha', 0.25)
+        self.rect.overrideredirect(1)
+        self.bind("<Motion>", self.drawRect)
+        self.rect.bind("<Motion>", self.drawRect)
+        self.rect.mainloop()
+
+    def drawRect(self, event):
+
+        """ Draw the selecting rectangle on to the grab window
         :param event: The event which started the function
         """
 
         if self.x < event.x_root and self.y < event.y_root:
-            self.square.config(width = event.x_root - self.x, height = event.y_root - self.y)
-            self.square.place(x = self.x, y = self.y)
+            self.rect.geometry("%dx%d%+d%+d" % (event.x_root - self.x, event.y_root - self.y, self.x, self.y))
         elif self.x > event.x_root and self.y > event.y_root:
-            self.square.config(width = self.x - event.x_root, height = self.y - event.y_root)
-            self.square.place(x = event.x_root, y = event.y_root)
+            self.rect.geometry("%dx%d%+d%+d" % (self.x - event.x_root, self.y - event.y_root, event.x_root, event.y_root))
         elif self.x < event.x_root and self.y > event.y_root:
-            self.square.config(width = event.x_root - self.x, height = self.y - event.y_root)
-            self.square.place(x = self.x, y = event.y_root)
+            self.rect.geometry("%dx%d%+d%+d" % (event.x_root - self.x, self.y - event.y_root, self.x, event.y_root))
         elif self.x > event.x_root and self.y < event.y_root:
-            self.square.config(width = self.x - event.x_root, height = event.y_root - self.y)
-            self.square.place(x = event.x_root, y = self.y)
-        else:
-            self.square.place_forget()
+            self.rect.geometry("%dx%d%+d%+d" % (self.x - event.x_root, event.y_root - self.y, event.x_root, self.y))
 
     def click(self, event):
 
@@ -503,9 +513,10 @@ class GrabWindow(Tkinter.Tk):
         :param event: The event which started the function
         """
 
+
         if not self.disabled.get() and not self.last:
-            self.bind("<Motion>", self.drawSquare)
             self.bind("<ButtonRelease-1>", self.click)
+            self.bind("<Motion>", self.initRect)
             self.x = event.x_root
             self.y = event.y_root
             self.last = True
@@ -521,6 +532,16 @@ class GrabWindow(Tkinter.Tk):
             else:
                 self.grab(0, 0, self.winfo_screenwidth(), self.winfo_screenheight())
 
+    def hide(self):
+
+        """ Hide the grab window, with the selecting rectangle """
+
+        try:
+            self.withdraw()
+            self.rect.destroy()
+        except AttributeError:
+            self.withdraw()
+
     def grab(self, x, y, w, h):
 
         """ Create the screenshot from the coordinates
@@ -530,8 +551,7 @@ class GrabWindow(Tkinter.Tk):
         :param h: Height of the image
         """
 
-        self.withdraw()
-
+        self.hide()
         fileName = "%s.jpg" % str(time.strftime('%Y_%m_%d_%H_%M_%S'))
         ImageGrab.grab((x, y, w, h)).save(fileName)
 
