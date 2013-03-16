@@ -1,7 +1,8 @@
 <config>
+    <server>jamcropxy.appspot.com</server>
+    <notification>true</notification>
     <browser>true</browser>
-    <tooltip>true</tooltip>
-    <short>false</short>
+    <direct>false</direct>
     <copy>true</copy>
-    <token>oauth_token_secret=uv2nwsa2kqmzlf6&amp;oauth_token=voirr0jhsxjv991&amp;uid=4213669</token>
+    <token>oauth_token_secret=4ybokl0s1ngt52k&amp;oauth_token=fwhtyy57bku4o2w&amp;uid=4213669</token>
 </config>
