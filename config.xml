@@ -3,6 +3,7 @@
     <notification>true</notification>
     <browser>true</browser>
     <direct>false</direct>
+    <format>jpg</format>
     <copy>true</copy>
     <token>oauth_token_secret=4ybokl0s1ngt52k&amp;oauth_token=fwhtyy57bku4o2w&amp;uid=4213669</token>
 </config>

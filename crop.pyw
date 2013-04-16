@@ -2,13 +2,14 @@
 #-*- coding: utf-8 -*-
 
 __author__ = "Tornyi Dénes"
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 
 
 SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
 CONFIG = 'config.xml'
 ICON = 'icon.ico'
 TIMEOUT = 2500
+FORMATS = ['jpg', 'png']
 
 
 from poster.streaminghttp import register_openers
@@ -293,7 +294,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         :param status: Status of the parent window
         """
 
-        Tkinter.Toplevel.__init__(self, parent, width = 160, height = 175)
+        Tkinter.Toplevel.__init__(self, parent, width = 160, height = 225)
         self.config = config
 
         self.protocol('WM_DELETE_WINDOW', lambda: self.deleteEvent(status))
@@ -302,8 +303,8 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         self.wm_attributes("-topmost", 1)
         self.title(u"Settings")
         self.wm_iconbitmap(ICON)
-        self.geometry('%dx%d+%d+%d' % (160, 175, self.winfo_screenwidth() / 2 - 80,
-                                       self.winfo_screenheight() / 2 - 87))
+        self.geometry('%dx%d+%d+%d' % (160, 205, self.winfo_screenwidth() / 2 - 80,
+                                       self.winfo_screenheight() / 2 - 102))
 
         # Create the automatic URL copy checkbox
 
@@ -350,17 +351,25 @@ class SettingsWindow(Tkinter.Toplevel, Window):
 
         self.label(self, 25, 82, "Use direct link")
 
+        # Create the format list
+
+        formatValue = Tkinter.StringVar()
+        formatValue.set(self.config['format'])
+        formatValue.trace(callback = lambda varName, elementName, mode: self.set('format', formatValue), mode = 'w')
+
+        self.menu(self, 6, 105, 17, formatValue, FORMATS)
+
         # Create the server list
 
         serverValue = Tkinter.StringVar()
         serverValue.set(self.config['server'])
         serverValue.trace(callback = lambda varName, elementName, mode: self.set('server', serverValue), mode = 'w')
 
-        self.menu(self, 6, 105, 17, serverValue, SERVERS)
+        self.menu(self, 6, 135, 17, serverValue, SERVERS)
 
         # Create the unlink button
 
-        button = self.button(self, 7, 140, 19, text = "Unlink client")
+        button = self.button(self, 7, 170, 19, text = "Unlink client")
         button.bind("<Button-1>", lambda event: self.unlink(parent, session))
 
         status.set(True)
@@ -475,7 +484,7 @@ class GrabWindow(Tkinter.Tk):
             config = SettingsWindow(self, self.session, self.config, self.disabled)
             config.mainloop()
 
-    def initRect(self, event):
+    def initRectangle(self, event):
 
         """ Init the selecting rectangle on to the grab window
         :param event: The event which started the function
@@ -484,15 +493,15 @@ class GrabWindow(Tkinter.Tk):
         self.rect = Tkinter.Toplevel()
         self.rect.resizable(width = 'false', height = 'false')
         self.attributes('-toolwindow', 1)
-        self.rect.configure(background = 'blue')
+        self.rect.configure(background = '#00a2ff')
         self.rect.wm_attributes("-topmost", 1)
-        self.rect.attributes('-alpha', 0.25)
+        self.rect.attributes('-alpha', 0.20)
         self.rect.overrideredirect(1)
-        self.bind("<Motion>", self.drawRect)
-        self.rect.bind("<Motion>", self.drawRect)
+        self.bind("<Motion>", self.drawRectangle)
+        self.rect.bind("<Motion>", self.drawRectangle)
         self.rect.mainloop()
 
-    def drawRect(self, event):
+    def drawRectangle(self, event):
 
         """ Draw the selecting rectangle on to the grab window
         :param event: The event which started the function
@@ -516,7 +525,7 @@ class GrabWindow(Tkinter.Tk):
 
         if not self.disabled.get() and not self.last:
             self.bind("<ButtonRelease-1>", self.click)
-            self.bind("<Motion>", self.initRect)
+            self.bind("<Motion>", self.initRectangle)
             self.x = event.x_root
             self.y = event.y_root
             self.last = True
@@ -552,7 +561,7 @@ class GrabWindow(Tkinter.Tk):
         """
 
         self.hide()
-        fileName = "%s.jpg" % str(time.strftime('%Y_%m_%d_%H_%M_%S'))
+        fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['format'])
         ImageGrab.grab((x, y, w, h)).save(fileName)
 
         try:
