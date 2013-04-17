@@ -6,15 +6,16 @@ __version__ = "1.2.0"
 
 
 SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
+FORMATS = ['jpg', 'png']
+TIMEOUT = 2500
 CONFIG = 'config.xml'
 ICON = 'icon.ico'
-TIMEOUT = 2500
-FORMATS = ['jpg', 'png']
+PROTOCOL = 'https'
 
 
 from poster.streaminghttp import register_openers
-from poster.encode import multipart_encode
 from xml.etree.ElementTree import ElementTree
+from poster.encode import multipart_encode
 from PIL import ImageGrab
 import tkMessageBox
 import webbrowser
@@ -68,7 +69,7 @@ class Connection:
 
         """ Get a request token """
 
-        result = urllib2.urlopen('https://%s/authorize' % self.config['server'])
+        result = urllib2.urlopen('%s://%s/authorize' % (PROTOCOL, self.config['server']))
         self.request_token = dict(urlparse.parse_qsl(result.read()))
         return self.request_token
 
@@ -76,7 +77,7 @@ class Connection:
 
         """ Get an access token with the request token """
 
-        result = urllib2.urlopen('%s?%s' % ('https://%s/access' % self.config['server'],
+        result = urllib2.urlopen('%s?%s' % ('%s://%s/access' % (PROTOCOL, self.config['server']),
                                             urllib.urlencode(self.request_token)))
         self.access_token = dict(urlparse.parse_qsl(result.read()))
         self.config['token'] = urllib.urlencode(self.access_token)
@@ -105,7 +106,7 @@ class Connection:
         """
 
         body, headers = multipart_encode({'body': open(fileName, 'rb')})
-        request = urllib2.Request('%s?%s' % ('https://%s/upload' % self.config['server'],
+        request = urllib2.Request('%s?%s' % ('%s://%s/upload' % (PROTOCOL, self.config['server']),
                                              urllib.urlencode(dict(self.access_token.items() +
                                                                    dict({'name': fileName}).items()))), body, headers)
         return json.loads(urllib2.urlopen(request).read())
@@ -117,7 +118,7 @@ class Connection:
         :param short: Get short or long URL
         """
 
-        request = urllib2.Request('%s?%s' % ('https://%s/share' % self.config['server'],
+        request = urllib2.Request('%s?%s' % ('%s://%s/share' % (PROTOCOL, self.config['server']),
                                              urllib.urlencode(dict(self.access_token.items() +
                                                                    dict({'name': fileName, 'short': short}).items()))))
         return json.loads((urllib2.urlopen(request)).read())
@@ -294,17 +295,17 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         :param status: Status of the parent window
         """
 
-        Tkinter.Toplevel.__init__(self, parent, width = 160, height = 225)
+        Tkinter.Toplevel.__init__(self, parent)
         self.config = config
 
+        self.geometry('%dx%d+%d+%d' % (162, 205, self.winfo_screenwidth() / 2 - 81,
+                                       self.winfo_screenheight() / 2 - 102))
         self.protocol('WM_DELETE_WINDOW', lambda: self.deleteEvent(status))
         self.resizable(width = 'false', height = 'false')
         self.attributes('-toolwindow', 1)
         self.wm_attributes("-topmost", 1)
         self.title(u"Settings")
         self.wm_iconbitmap(ICON)
-        self.geometry('%dx%d+%d+%d' % (160, 205, self.winfo_screenwidth() / 2 - 80,
-                                       self.winfo_screenheight() / 2 - 102))
 
         # Create the automatic URL copy checkbox
 
@@ -357,7 +358,7 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         formatValue.set(self.config['format'])
         formatValue.trace(callback = lambda varName, elementName, mode: self.set('format', formatValue), mode = 'w')
 
-        self.menu(self, 6, 105, 17, formatValue, FORMATS)
+        self.menu(self, 6, 105, 18, formatValue, FORMATS)
 
         # Create the server list
 
@@ -365,11 +366,11 @@ class SettingsWindow(Tkinter.Toplevel, Window):
         serverValue.set(self.config['server'])
         serverValue.trace(callback = lambda varName, elementName, mode: self.set('server', serverValue), mode = 'w')
 
-        self.menu(self, 6, 135, 17, serverValue, SERVERS)
+        self.menu(self, 6, 135, 18, serverValue, SERVERS)
 
         # Create the unlink button
 
-        button = self.button(self, 7, 170, 19, text = "Unlink client")
+        button = self.button(self, 7, 170, 20, text = "Unlink client")
         button.bind("<Button-1>", lambda event: self.unlink(parent, session))
 
         status.set(True)
@@ -436,8 +437,8 @@ class GrabWindow(Tkinter.Tk):
 
         if not self.session.load():
             request_token = self.session.authorize()
-            webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
-                                       urllib.urlencode({'oauth_token': request_token['oauth_token']})))
+            webbrowser.open("%s%s?%s" % (PROTOCOL, "://www.dropbox.com/1/oauth/authorize",
+                                         urllib.urlencode({'oauth_token': request_token['oauth_token']})))
 
             if tkMessageBox.askokcancel(title = "JamCrop", message = "The JamCrop requires a limited Dropbox "
                                                                      "access for itself. If you allowed the "
@@ -486,7 +487,7 @@ class GrabWindow(Tkinter.Tk):
 
     def initRectangle(self, event):
 
-        """ Init the selecting rectangle on to the grab window
+        """ Init the selecting rectangle (which is a window) on to the grab window
         :param event: The event which started the function
         """
 
@@ -515,6 +516,7 @@ class GrabWindow(Tkinter.Tk):
             self.rect.geometry("%dx%d%+d%+d" % (event.x_root - self.x, self.y - event.y_root, self.x, event.y_root))
         elif self.x > event.x_root and self.y < event.y_root:
             self.rect.geometry("%dx%d%+d%+d" % (self.x - event.x_root, event.y_root - self.y, event.x_root, self.y))
+        self.focus()
 
     def click(self, event):
 
