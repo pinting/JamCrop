@@ -1,19 +1,11 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-__author__ = "Tornyi Dénes"
-__version__ = "2.0.1"
-
-
-SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
-CONFIG = 'config.xml'
-ICON = 'icon.ico'
-TIMEOUT = 2.5
-
+"""JamCrop.py: This is a client for uploading files into several
+image hosting servers. Dropbox included."""
 
 from poster.streaminghttp import register_openers
 from poster.encode import multipart_encode
-from xml.etree.ElementTree import ElementTree
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import webbrowser
@@ -26,9 +18,16 @@ import time
 import sys
 import os
 
+__author__      = "Dénes Tornyi, Ádam Tajti"
+__version__     = "2.0.2"
+
+
+SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
+CONFIG = 'config.json'
+ICON = 'icon.ico'
+TIMEOUT = 2.0
 
 register_openers()
-
 
 class Reference:
     def __init__(self, var):
@@ -122,49 +121,33 @@ class Connection:
         return json.loads((urllib2.urlopen(request)).read())
 
 
-class Config(ElementTree):
-    name = None
+class Config:
+    config = None
+    fileName = None
 
-    def __init__(self, name):
+    def __init__(self, fileName):
 
         """ Open an XML file
-        :param name: Name of the XML file
+        :param fileName: Name of the json config file
         """
 
-        ElementTree.__init__(self, file = name)
-        self.name = name
+        self.fileName = fileName
+        with open(self.fileName, 'r') as config_file:
+            self.config = json.load(config_file)
 
     def __setitem__(self, key, value):
-
-        """ Set an item
-        :param key: Name of the item
-        :param value: Value of the item
-        """
-
-        if value is not None:
-            self._root.find(key).text = unicode(value)
-        else:
-            self._root.find(key).text = None
+        self.config[key] = value
 
     def __getitem__(self, key):
-
-        """ Get an item
-        :param key: Name of the item
-        """
-
         try:
-            if int(self._root.find(key).text) == float(self._root.find(key).text):
-                return int(self._root.find(key).text)
-            else:
-                return float(self._root.find(key).text)
-        except (ValueError, TypeError):
-            return self._root.find(key).text
+            return self.config[key]
+        except:
+            pass
+
 
     def save(self):
-
-        """ Save the opened XML file """
-
-        self.write(self.name)
+        with open(self.fileName, 'w') as config_file:
+            json.dump(self.config, config_file, indent=4)
 
 
 class Window(QWidget):

@@ -1,8 +1,0 @@
-<config>
-    <server>jamcropxy.appspot.com</server>
-    <notification>2</notification>
-    <browser>2</browser>
-    <direct>2</direct>
-    <copy>2</copy>
-    <token />
-</config>
