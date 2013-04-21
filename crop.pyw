@@ -1,8 +1,16 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-"""JamCrop.py: This is a client for uploading files into several
-image hosting servers. Dropbox included."""
+"""crop.pyw: Takes and uploads screenshot into supported services.
+             The main idea, is that we want to take screenshots, and upload
+             them to wherever we want them, and get back the direct link to 
+             it as fast as we can. This application is made for those who
+             likes to take screenshots often, and share them with their
+             friends.
+             
+             If you have any advice, please write to us.
+             - Google Code: https://code.google.com/p/jamcrop/
+"""
 
 from poster.streaminghttp import register_openers
 from poster.encode import multipart_encode
@@ -19,32 +27,29 @@ import sys
 import os
 
 __author__      = "Dénes Tornyi, Ádam Tajti"
-__version__     = "2.0.2"
+__version__     = "2.0.2b"
 
 
 SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
 CONFIG = 'config.json'
 ICON = 'icon.ico'
-TIMEOUT = 2.0
+TIMEOUT = 2.5
 
 register_openers()
 
 class Reference:
+    """ Reference Class is used to store a single variable, that is referable. """
     def __init__(self, var):
-
-        """ Set the variable, when initializing the class"""
 
         self.var = var
 
     def get(self):
-
-        """ Get the value of the variable """
+        """ Gets the value of the variable. """
 
         return self.var
 
     def set(self, var):
-
-        """ Set the value of the variable """
+        """ Sets the value of the variable. """
 
         self.var = var
 
@@ -56,23 +61,17 @@ class Connection:
 
     def __init__(self, config):
 
-        """ Get the config file
-        :param config: The loaded config
-        """
-
         self.config = config
 
     def authorize(self):
-
-        """ Get a request token """
+        """ Gets a request token. """
 
         result = urllib2.urlopen('https://%s/authorize' % self.config['server'])
         self.request_token = dict(urlparse.parse_qsl(result.read()))
         return self.request_token
 
     def access(self):
-
-        """ Get an access token with the request token """
+        """ Gets an access token, using the request token. """
 
         result = urllib2.urlopen('%s?%s' % ('https://%s/access' %  self.config['server'],
                                             urllib.urlencode(self.request_token)))
@@ -81,8 +80,7 @@ class Connection:
         return self.access_token
 
     def load(self):
-
-        """ Load the previously saved access token """
+        """ Loads the token if we have it, else it returns false. """
 
         if self.config['token'] is not None:
             self.access_token = dict(urlparse.parse_qsl(self.config['token']))
@@ -91,33 +89,27 @@ class Connection:
             return False
 
     def unlink(self):
-
-        """ Delete token from the config """
+        """ Deletes the token from the config. """
 
         self.config['token'] = None
 
     def upload(self, fileName):
-
-        """ Upload a file to the server
-        :param fileName: Name of the file for upload
-        """
+        """ Uploads a file to the server. """
 
         body, headers = multipart_encode({'body': open(fileName, 'rb')})
-        request = urllib2.Request('%s?%s' % ('https://%s/upload' % self.config['server'],
-                                             urllib.urlencode(dict(self.access_token.items() +
-                                                                   dict({'name': fileName}).items()))), body, headers)
+        request = urllib2.Request('%s?%s' % ('https://%s/upload' \
+        % self.config['server'], urllib.urlencode(dict(self.access_token.items() +
+          dict({'name': fileName}).items()))), body, headers)
+          
         return json.loads(urllib2.urlopen(request).read())
 
-    def share(self, fileName, short = 'false'):
+    def geturl(self, fileName, short_url = 'false'):
+        """ Gets back the link of the uploaded file. """
 
-        """ Get the link of an uploaded file
-        :param fileName: Name of the file for share
-        :param short: Get short or long URL
-        """
-
-        request = urllib2.Request('%s?%s' % ('https://%s/share' % self.config['server'],
-                                             urllib.urlencode(dict(self.access_token.items() +
-                                                                   dict({'name': fileName, 'short': short}).items()))))
+        request = urllib2.Request('%s?%s' % ('https://%s/share' \
+        % self.config['server'], urllib.urlencode(dict(self.access_token.items() +
+          dict({'name': fileName, 'short': short_url}).items()))))
+          
         return json.loads((urllib2.urlopen(request)).read())
 
 
@@ -126,34 +118,32 @@ class Config:
     fileName = None
 
     def __init__(self, fileName):
-
-        """ Open an XML file
-        :param fileName: Name of the json config file
-        """
-
+    
         self.fileName = fileName
         with open(self.fileName, 'r') as config_file:
             self.config = json.load(config_file)
 
     def __setitem__(self, key, value):
+    
         self.config[key] = value
 
     def __getitem__(self, key):
+    
         try:
             return self.config[key]
         except:
-            pass
+            pass    # TODO: Write default values, if the key doesn't exists.
 
 
     def save(self):
+    
         with open(self.fileName, 'w') as config_file:
             json.dump(self.config, config_file, indent=4)
 
 
 class Window(QWidget):
     def center(self):
-
-        """ Move the window to the center """
+        """ Moves the window to the center of the screen. """
 
         frame = self.frameGeometry()
         screen = QDesktopWidget().availableGeometry().center()
@@ -161,44 +151,30 @@ class Window(QWidget):
         self.move(frame.topLeft())
 
     def label(self, msg, x, y):
-
-        """ Create a new label
-        :param msg: Content of the label
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        """
+        """ Creates a new label. """
 
         label = QLabel(msg, self)
         label.move(x, y)
         return label
 
-    def button(self, title, x, y, onclick = False):
-
-        """ Create a new button
-        :param title: Title of the button
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param onclick: A function for processing the results
+    def button(self, msg, x, y, action = False):
+        """ Creates a new button.
+        :param action: An action to take when the button is clicked.
         """
 
-        button = QPushButton(title, self)
+        button = QPushButton(msg, self)
         button.resize(button.sizeHint())
         button.move(x, y)
 
-        if onclick:
-            button.clicked.connect(onclick)
+        if action:
+            button.clicked.connect(action)
 
         return button
 
     def field(self, x, y, w, h, default = False, action = False):
-
-        """ Create a new field
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param w: Width of the field
-        :param h: Height of the field
-        :param default: Default value
-        :param action: A function for processing the changes
+        """ Creates a new field.
+        :param default: Default text.
+        :param action: An action to take when the text changes.
         """
 
         field = QLineEdit(self)
@@ -213,13 +189,9 @@ class Window(QWidget):
 
         return field
 
-    def check(self, desc, x, y, action = False):
-
-        """ Create a new checkbox
-        :param desc: The description of the checkbox
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param action: A function for processing the results
+    def check(self, msg, x, y, action = False):
+        """ Creates a new checkbox.
+        :param action: An action to take when the checkbox's state changes.
         """
 
         check = QCheckBox(desc, self)
@@ -231,12 +203,8 @@ class Window(QWidget):
         return check
 
     def combo(self, x, y, values, action = False):
-
-        """ Create a new list
-        :param values: List of possible values
-        :param x: First horizontal pixel
-        :param y: First vertical pixel
-        :param action: A function for processing the results
+        """ Creates a new Combo Box.
+        :param action: An action to take when the Combo Box's text changes.
         """
 
         combo = QComboBox(self)
@@ -253,13 +221,6 @@ class Window(QWidget):
 class Notification(QSystemTrayIcon):
     def __init__(self, title, msg, icon, parent = None):
 
-        """ Initializing a notification
-        :param title: Title of the notification
-        :param msg: Message of the notification
-        :param icon: Icon of the application on the system tray
-        :param parent: The parent window
-        """
-
         QSystemTrayIcon.__init__(self, parent)
         self.setIcon(QIcon(icon))
         self.show()
@@ -272,13 +233,6 @@ class SettingsWindow(Window):
     status = None
 
     def __init__(self, parent, session, config, status = Reference(False)):
-
-        """ Initializing the settings window
-        :param parent: The parent window
-        :param session: Current session
-        :param config: Current config
-        :param status: Status of the parent window
-        """
 
         Window.__init__(self)
         self.config = config
@@ -338,28 +292,20 @@ class SettingsWindow(Window):
         self.status.set(True)
 
     def closeEvent(self, event):
-
-        """ Closing function of the settings
-        :param event: The event which started the function
-        """
+        """ Closes the Settings Window. """
 
         self.parent.activateWindow()
         self.status.set(False)
         self.close()
 
     def change(self, key, value):
+        """ Sets a config attribute identified by the key. """
+        
+        self.config[key] = value
 
-        """ Set a settings parameter
-        :param key: Name of the parameter
-        :param value: Value of the parameter
-        """
-
-        if str(key):
-            self.config[key] = value
-
+    # DO WE REALLY NEED SESSION PARAMETER HERE?
     def unlink(self, session):
-
-        """ Unlink client from the server, and close every window
+        """ Disconnects from the server, and closes every window.
         :param session: Status of the settings window
         """
 
@@ -375,8 +321,6 @@ class GrabWindow(QWidget):
     shape = None
 
     def __init__(self):
-
-        """ Initializing the grab window """
 
         super(GrabWindow, self).__init__()
         self.config = Config(CONFIG)
@@ -418,9 +362,8 @@ class GrabWindow(QWidget):
         self.show()
 
     def paintEvent(self, event):
-
-        """ Draw an invisible layer which is clickable
-        :param event: The event which started the function
+        """ Draws an invisible layer, which is clickable.
+        :param event: The event which started the function.
         """
 
         canvas = QPainter()
@@ -431,18 +374,14 @@ class GrabWindow(QWidget):
         canvas.end()
 
     def closeEvent(self, event):
-
-        """ Closing function of the grab window
-        :param event: The event which started the function
-        """
+        """ Saves the config, and closes the window. """
 
         self.config.save()
         self.close()
 
     def keyPressEvent(self, event):
-
-        """ Track the key presses
-        :param event: The event which started the function
+        """ Keypress Event Handler.
+        :param event: The event which started the function.
         """
 
         if event.key() == Qt.Key_F1:
@@ -451,9 +390,8 @@ class GrabWindow(QWidget):
             self.closeEvent(None)
 
     def mousePressEvent(self, event):
-
-        """ Start selecting rectangle drawing after the mouse have pressed
-        :param event: Created by the pressed mouse
+        """ Draws a rectangle for selecting purposes after the mouse has been pressed.
+        :param event: Created by the pressed mouse.
         """
 
         if not self.disabled.get():
@@ -466,9 +404,8 @@ class GrabWindow(QWidget):
         QWidget.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):
-
-        """ Draw the selecting rectangle by the mouse coordinates
-        :param event: Created by the moving of the mouse
+        """ Draws the selecting rectangle by the mouse coordinates.
+        :param event: Created by the movement of the mouse.
         """
 
         if not self.disabled.get() and self.shape.isVisible():
@@ -477,9 +414,8 @@ class GrabWindow(QWidget):
         QWidget.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
-
-        """ Create the screenshot after the mouse have released
-        :param event: Created by the released mouse
+        """ Captures and uploads the screenshot after the mouse has been released.
+        :param event: Created by the released mouse.
         """
 
         if not self.disabled.get() and self.shape.isVisible():
@@ -499,10 +435,10 @@ class GrabWindow(QWidget):
                 os.unlink(fileName)
 
             if self.config['direct'] == Qt.Checked:
-                result = self.session.share(fileName, 'false')
+                result = self.session.geturl(fileName, 'false')
                 result['url'] += '?dl=1'
             else:
-                result = self.session.share(fileName, 'true')
+                result = self.session.geturl(fileName, 'true')
 
             if self.config['copy'] == Qt.Checked:
                 pyperclip.copy(result['url'])
@@ -511,7 +447,10 @@ class GrabWindow(QWidget):
                 webbrowser.open(result['url'])
 
             if self.config['notification'] == Qt.Checked:
-                self.alert = Notification("JamCrop", "Uploading is completed", ICON)
+                msg = "Your screenshot is uploaded!"
+                if self.config['notification'] == Qt.Checked:
+                    msg += " (It's on your clipboard!)"
+                self.alert = Notification("JamCrop", msg, ICON)
                 time.sleep(TIMEOUT)
                 self.alert.hide()
 
