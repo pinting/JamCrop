@@ -1,16 +1,30 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-"""crop.pyw: Takes and uploads screenshot into supported services.
-             The main idea, is that we want to take screenshots, and upload
-             them to wherever we want them, and get back the direct link to 
-             it as fast as we can. This application is made for those who
-             likes to take screenshots often, and share them with their
-             friends.
-             
-             If you have any advice, please write to us.
-             - Google Code: https://code.google.com/p/jamcrop/
 """
+JamCrop
+
+Takes and uploads screenshot into supported services.
+The main idea, is that we want to take screenshots, and upload
+them to wherever we want them, and get back the direct link to
+it as fast as we can. This application is made for those who
+likes to take screenshots often, and share them with their
+friends.
+
+If you have any advice, please write to us.
+- Google Code: https://code.google.com/p/jamcrop/
+"""
+
+
+__author__ = ['Dénes Tornyi', 'Ádam Tajti']
+__version__ = "2.0.3"
+
+
+SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
+CONFIG = 'config.json'
+ICON = 'icon.ico'
+TIMEOUT = 2.5
+
 
 from poster.streaminghttp import register_openers
 from poster.encode import multipart_encode
@@ -26,29 +40,26 @@ import time
 import sys
 import os
 
-__author__      = "Dénes Tornyi, Ádam Tajti"
-__version__     = "2.0.2b"
-
-
-SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
-CONFIG = 'config.json'
-ICON = 'icon.ico'
-TIMEOUT = 2.5
 
 register_openers()
 
+
 class Reference:
+
     """ Reference Class is used to store a single variable, that is referable. """
+
     def __init__(self, var):
 
         self.var = var
 
     def get(self):
+
         """ Gets the value of the variable. """
 
         return self.var
 
     def set(self, var):
+
         """ Sets the value of the variable. """
 
         self.var = var
@@ -64,6 +75,7 @@ class Connection:
         self.config = config
 
     def authorize(self):
+
         """ Gets a request token. """
 
         result = urllib2.urlopen('https://%s/authorize' % self.config['server'])
@@ -71,6 +83,7 @@ class Connection:
         return self.request_token
 
     def access(self):
+
         """ Gets an access token, using the request token. """
 
         result = urllib2.urlopen('%s?%s' % ('https://%s/access' %  self.config['server'],
@@ -80,6 +93,7 @@ class Connection:
         return self.access_token
 
     def load(self):
+
         """ Loads the token if we have it, else it returns false. """
 
         if self.config['token'] is not None:
@@ -89,11 +103,13 @@ class Connection:
             return False
 
     def unlink(self):
+
         """ Deletes the token from the config. """
 
         self.config['token'] = None
 
     def upload(self, fileName):
+
         """ Uploads a file to the server. """
 
         body, headers = multipart_encode({'body': open(fileName, 'rb')})
@@ -104,6 +120,7 @@ class Connection:
         return json.loads(urllib2.urlopen(request).read())
 
     def geturl(self, fileName, short_url = 'false'):
+
         """ Gets back the link of the uploaded file. """
 
         request = urllib2.Request('%s?%s' % ('https://%s/share' \
@@ -118,31 +135,36 @@ class Config:
     fileName = None
 
     def __init__(self, fileName):
-    
+
         self.fileName = fileName
         with open(self.fileName, 'r') as config_file:
             self.config = json.load(config_file)
 
     def __setitem__(self, key, value):
-    
-        self.config[key] = value
+
+        self.config[key] = unicode(value)
 
     def __getitem__(self, key):
-    
+
         try:
+            if isinstance(self.config[key], int):
+                return int(self.config[key])
+            else:
+                return float(self.config[key])
+        except(ValueError, TypeError):
             return self.config[key]
         except:
-            pass    # TODO: Write default values, if the key doesn't exists.
-
+            raise Exception('Not found!')
 
     def save(self):
-    
+
         with open(self.fileName, 'w') as config_file:
             json.dump(self.config, config_file, indent=4)
 
 
 class Window(QWidget):
     def center(self):
+
         """ Moves the window to the center of the screen. """
 
         frame = self.frameGeometry()
@@ -151,6 +173,7 @@ class Window(QWidget):
         self.move(frame.topLeft())
 
     def label(self, msg, x, y):
+
         """ Creates a new label. """
 
         label = QLabel(msg, self)
@@ -158,6 +181,7 @@ class Window(QWidget):
         return label
 
     def button(self, msg, x, y, action = False):
+
         """ Creates a new button.
         :param action: An action to take when the button is clicked.
         """
@@ -172,6 +196,7 @@ class Window(QWidget):
         return button
 
     def field(self, x, y, w, h, default = False, action = False):
+
         """ Creates a new field.
         :param default: Default text.
         :param action: An action to take when the text changes.
@@ -190,11 +215,12 @@ class Window(QWidget):
         return field
 
     def check(self, msg, x, y, action = False):
+
         """ Creates a new checkbox.
         :param action: An action to take when the checkbox's state changes.
         """
 
-        check = QCheckBox(desc, self)
+        check = QCheckBox(msg, self)
         check.move(x, y)
 
         if action:
@@ -203,6 +229,7 @@ class Window(QWidget):
         return check
 
     def combo(self, x, y, values, action = False):
+
         """ Creates a new Combo Box.
         :param action: An action to take when the Combo Box's text changes.
         """
@@ -292,6 +319,7 @@ class SettingsWindow(Window):
         self.status.set(True)
 
     def closeEvent(self, event):
+
         """ Closes the Settings Window. """
 
         self.parent.activateWindow()
@@ -299,12 +327,13 @@ class SettingsWindow(Window):
         self.close()
 
     def change(self, key, value):
+
         """ Sets a config attribute identified by the key. """
         
         self.config[key] = value
 
-    # DO WE REALLY NEED SESSION PARAMETER HERE?
     def unlink(self, session):
+
         """ Disconnects from the server, and closes every window.
         :param session: Status of the settings window
         """
@@ -362,6 +391,7 @@ class GrabWindow(QWidget):
         self.show()
 
     def paintEvent(self, event):
+
         """ Draws an invisible layer, which is clickable.
         :param event: The event which started the function.
         """
@@ -374,12 +404,14 @@ class GrabWindow(QWidget):
         canvas.end()
 
     def closeEvent(self, event):
+
         """ Saves the config, and closes the window. """
 
         self.config.save()
         self.close()
 
     def keyPressEvent(self, event):
+
         """ Keypress Event Handler.
         :param event: The event which started the function.
         """
@@ -390,6 +422,7 @@ class GrabWindow(QWidget):
             self.closeEvent(None)
 
     def mousePressEvent(self, event):
+
         """ Draws a rectangle for selecting purposes after the mouse has been pressed.
         :param event: Created by the pressed mouse.
         """
@@ -404,6 +437,7 @@ class GrabWindow(QWidget):
         QWidget.mousePressEvent(self, event)
 
     def mouseMoveEvent(self, event):
+
         """ Draws the selecting rectangle by the mouse coordinates.
         :param event: Created by the movement of the mouse.
         """
@@ -414,6 +448,7 @@ class GrabWindow(QWidget):
         QWidget.mouseMoveEvent(self, event)
 
     def mouseReleaseEvent(self, event):
+
         """ Captures and uploads the screenshot after the mouse has been released.
         :param event: Created by the released mouse.
         """
@@ -448,8 +483,8 @@ class GrabWindow(QWidget):
 
             if self.config['notification'] == Qt.Checked:
                 msg = "Your screenshot is uploaded!"
-                if self.config['notification'] == Qt.Checked:
-                    msg += " (It's on your clipboard!)"
+                if self.config['copy'] == Qt.Checked:
+                    msg += "\nIt's on your clipboard!"
                 self.alert = Notification("JamCrop", msg, ICON)
                 time.sleep(TIMEOUT)
                 self.alert.hide()

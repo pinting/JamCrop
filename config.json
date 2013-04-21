@@ -1,10 +1,10 @@
 {
     "img_quality": 80, 
-    "img_format": "png", 
-    "notification": 2, 
-    "direct": 2, 
+    "copy": "2", 
+    "notification": "2", 
+    "direct": "2", 
     "server": "jamcropxy.appspot.com", 
-    "token": null, 
-    "copy": 2, 
-    "browser": 2
+    "token": "oauth_token_secret=84hrbczthurnj9z&oauth_token=nvtl3q0fp4qux86&uid=4213669", 
+    "img_format": "png", 
+    "browser": "2"
 }
