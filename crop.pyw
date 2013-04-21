@@ -486,10 +486,10 @@ class GrabWindow(QWidget):
             self.shape.hide()
             self.hide()
 
-            fileName = "%s.jpg" % str(time.strftime('%Y_%m_%d_%H_%M_%S'))
+            fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['img_format'])
 
             shot = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
-            shot.save(fileName, 'jpg')
+            shot.save(fileName, self.config['img_format'], self.config['img_quality'])
 
             try:
                 self.session.upload(fileName)
