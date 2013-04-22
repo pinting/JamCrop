@@ -24,6 +24,7 @@ SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
 CONFIG = 'config.json'
 ICON = 'icon.ico'
 TIMEOUT = 2.5
+PROTOCOL = 'http'
 
 
 from poster.streaminghttp import register_openers
@@ -32,6 +33,8 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import webbrowser
 import pyperclip
+import mimetypes
+import cStringIO
 import urlparse
 import urllib2
 import urllib
@@ -41,15 +44,11 @@ import sys
 import os
 
 
-register_openers()
-
-
 class Reference:
 
-    """ Reference Class is used to store a single variable, that is referable. """
+    """ Reference class is used to store a single variable, that is referable. """
 
     def __init__(self, var):
-
         self.var = var
 
     def get(self):
@@ -71,14 +70,13 @@ class Connection:
     config = None
 
     def __init__(self, config):
-
         self.config = config
 
     def authorize(self):
 
         """ Gets a request token. """
 
-        result = urllib2.urlopen('https://%s/authorize' % self.config['server'])
+        result = urllib2.urlopen('%s://%s/authorize' % (PROTOCOL, self.config['server']))
         self.request_token = dict(urlparse.parse_qsl(result.read()))
         return self.request_token
 
@@ -86,7 +84,7 @@ class Connection:
 
         """ Gets an access token, using the request token. """
 
-        result = urllib2.urlopen('%s?%s' % ('https://%s/access' %  self.config['server'],
+        result = urllib2.urlopen('%s?%s' % ('%s://%s/access' % (PROTOCOL, self.config['server']),
                                             urllib.urlencode(self.request_token)))
         self.access_token = dict(urlparse.parse_qsl(result.read()))
         self.config['token'] = urllib.urlencode(self.access_token)
@@ -108,23 +106,24 @@ class Connection:
 
         self.config['token'] = None
 
-    def upload(self, fileName):
+    def upload(self, stringIO, fileName):
 
         """ Uploads a file to the server. """
 
-        body, headers = multipart_encode({'body': open(fileName, 'rb')})
-        request = urllib2.Request('%s?%s' % ('https://%s/upload' \
-        % self.config['server'], urllib.urlencode(dict(self.access_token.items() +
-          dict({'name': fileName}).items()))), body, headers)
-          
+        # FIXME: There's an unknown problem with the uploading - I'm working on it /Pinting/
+
+        datagen = cStringIO.StringIO("Foobar")
+        body, headers = multipart_encode({'body': datagen})
+        request = urllib2.Request('http://localhost:8080/upload', body, headers)
+
         return json.loads(urllib2.urlopen(request).read())
 
     def geturl(self, fileName, short_url = 'false'):
 
         """ Gets back the link of the uploaded file. """
 
-        request = urllib2.Request('%s?%s' % ('https://%s/share' \
-        % self.config['server'], urllib.urlencode(dict(self.access_token.items() +
+        request = urllib2.Request('%s?%s' % ('%s://%s/share' \
+        % (PROTOCOL, self.config['server']), urllib.urlencode(dict(self.access_token.items() +
           dict({'name': fileName, 'short': short_url}).items()))))
           
         return json.loads((urllib2.urlopen(request)).read())
@@ -135,17 +134,14 @@ class Config:
     fileName = None
 
     def __init__(self, fileName):
-
         self.fileName = fileName
         with open(self.fileName, 'r') as config_file:
             self.config = json.load(config_file)
 
     def __setitem__(self, key, value):
-
         self.config[key] = unicode(value)
 
     def __getitem__(self, key):
-
         try:
             if isinstance(self.config[key], int):
                 return int(self.config[key])
@@ -157,7 +153,6 @@ class Config:
             raise Exception('Not found!')
 
     def save(self):
-
         with open(self.fileName, 'w') as config_file:
             json.dump(self.config, config_file, indent=4)
 
@@ -230,8 +225,8 @@ class Window(QWidget):
 
     def combo(self, x, y, values, action = False):
 
-        """ Creates a new Combo Box.
-        :param action: An action to take when the Combo Box's text changes.
+        """ Creates a new combobox.
+        :param action: An action to take when the combobox's text changes.
         """
 
         combo = QComboBox(self)
@@ -247,7 +242,6 @@ class Window(QWidget):
 
 class Notification(QSystemTrayIcon):
     def __init__(self, title, msg, icon, parent = None):
-
         QSystemTrayIcon.__init__(self, parent)
         self.setIcon(QIcon(icon))
         self.show()
@@ -260,7 +254,6 @@ class SettingsWindow(Window):
     status = None
 
     def __init__(self, parent, session, config, status = Reference(False)):
-
         Window.__init__(self)
         self.config = config
         self.status = status
@@ -320,7 +313,7 @@ class SettingsWindow(Window):
 
     def closeEvent(self, event):
 
-        """ Closes the Settings Window. """
+        """ Closes the settings window. """
 
         self.parent.activateWindow()
         self.status.set(False)
@@ -350,7 +343,6 @@ class GrabWindow(QWidget):
     shape = None
 
     def __init__(self):
-
         super(GrabWindow, self).__init__()
         self.config = Config(CONFIG)
 
@@ -370,7 +362,7 @@ class GrabWindow(QWidget):
 
         if not self.session.load():
             request_token = self.session.authorize()
-            webbrowser.open("%s?%s" % ("https://www.dropbox.com/1/oauth/authorize",
+            webbrowser.open("%s%s?%s" % (PROTOCOL, "://www.dropbox.com/1/oauth/authorize",
                                        urllib.urlencode({'oauth_token': request_token['oauth_token']})))
 
             reply = QMessageBox.question(self, "JamCrop", "The JamCrop requires a limited Dropbox "
@@ -392,9 +384,7 @@ class GrabWindow(QWidget):
 
     def paintEvent(self, event):
 
-        """ Draws an invisible layer, which is clickable.
-        :param event: The event which started the function.
-        """
+        """ Draws an invisible layer, which is clickable. """
 
         canvas = QPainter()
         canvas.begin(self)
@@ -412,9 +402,7 @@ class GrabWindow(QWidget):
 
     def keyPressEvent(self, event):
 
-        """ Keypress Event Handler.
-        :param event: The event which started the function.
-        """
+        """ Keypress Event Handler. """
 
         if event.key() == Qt.Key_F1:
             self.settings = SettingsWindow(self, self.session, self.config, self.disabled)
@@ -423,9 +411,7 @@ class GrabWindow(QWidget):
 
     def mousePressEvent(self, event):
 
-        """ Draws a rectangle for selecting purposes after the mouse has been pressed.
-        :param event: Created by the pressed mouse.
-        """
+        """ Draws a rectangle for selecting purposes after the mouse has been pressed. """
 
         if not self.disabled.get():
             self.origin = event.pos()
@@ -438,9 +424,7 @@ class GrabWindow(QWidget):
 
     def mouseMoveEvent(self, event):
 
-        """ Draws the selecting rectangle by the mouse coordinates.
-        :param event: Created by the movement of the mouse.
-        """
+        """ Draws the selecting rectangle by the mouse coordinates. """
 
         if not self.disabled.get() and self.shape.isVisible():
             self.shape.setGeometry(QRect(self.origin, event.pos()).normalized())
@@ -449,9 +433,7 @@ class GrabWindow(QWidget):
 
     def mouseReleaseEvent(self, event):
 
-        """ Captures and uploads the screenshot after the mouse has been released.
-        :param event: Created by the released mouse.
-        """
+        """ Captures and uploads the screenshot after the mouse has been released. """
 
         if not self.disabled.get() and self.shape.isVisible():
             self.shape.hide()
@@ -459,15 +441,16 @@ class GrabWindow(QWidget):
 
             fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['img_format'])
 
-            shot = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
-            shot.save(fileName, self.config['img_format'], self.config['img_quality'])
+            pixmap = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
+            byte_array = QByteArray()
+            buffer = QBuffer(byte_array)
+            buffer.open(QIODevice.WriteOnly)
+            pixmap.save(buffer, self.config['img_format'], self.config['img_quality'])
 
-            try:
-                self.session.upload(fileName)
-            except:
-                self.closeEvent(None)
-            finally:
-                os.unlink(fileName)
+            string_io = cStringIO.StringIO(byte_array)
+            string_io.seek(0)
+
+            self.session.upload(string_io, fileName)
 
             if self.config['direct'] == Qt.Checked:
                 result = self.session.geturl(fileName, 'false')
