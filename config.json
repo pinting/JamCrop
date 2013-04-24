@@ -3,7 +3,7 @@
     "copy": "0", 
     "notification": "0", 
     "direct": "0", 
-    "server": "localhost:8080", 
+    "server": "jamcropxy.appspot.com", 
     "token": "oauth_token_secret=84hrbczthurnj9z&oauth_token=nvtl3q0fp4qux86&uid=4213669", 
     "img_format": "png", 
     "browser": "0"

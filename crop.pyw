@@ -35,14 +35,15 @@ import webbrowser
 import pyperclip
 import mimetypes
 import cStringIO
+import StringIO
 import urlparse
 import urllib2
 import urllib
+import pickle
 import json
 import time
 import sys
 import os
-
 
 class Reference:
 
@@ -112,11 +113,18 @@ class Connection:
 
         # FIXME: There's an unknown problem with the uploading - I'm working on it /Pinting/
 
-        datagen = cStringIO.StringIO("Foobar")
-        body, headers = multipart_encode({'body': datagen})
-        request = urllib2.Request('http://localhost:8080/upload', body, headers)
+        headers = {'content-type': mimetypes.guess_type(fileName)[0],
+                   'content-length': str(len(stringIO.read()))}
 
-        return json.loads(urllib2.urlopen(request).read())
+        opener = register_openers()
+        request = urllib2.Request('http://localhost:8080/upload?%s' %
+                                  (urllib.urlencode(dict(self.access_token.items() +
+                                                         dict({'name': fileName}).items()))), stringIO, headers)
+        request.get_method = lambda: 'POST'
+        content = opener.open(request)
+
+        print(content.read())
+        sys.exit()
 
     def geturl(self, fileName, short_url = 'false'):
 
@@ -440,6 +448,8 @@ class GrabWindow(QWidget):
             self.hide()
 
             fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['img_format'])
+
+            # FIXME: There's an unknown problem after the self.session.upload
 
             pixmap = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
             byte_array = QByteArray()
