@@ -23,27 +23,24 @@ __version__ = "2.0.3"
 SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
 CONFIG = 'config.json'
 ICON = 'icon.ico'
-TIMEOUT = 2.5
 PROTOCOL = 'http'
+TIMEOUT = 2.5
 
 
 from poster.streaminghttp import register_openers
-from poster.encode import multipart_encode
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import webbrowser
 import pyperclip
 import mimetypes
 import cStringIO
-import StringIO
 import urlparse
 import urllib2
 import urllib
-import pickle
 import json
 import time
 import sys
-import os
+
 
 class Reference:
 
@@ -111,29 +108,24 @@ class Connection:
 
         """ Uploads a file to the server. """
 
-        # FIXME: There's an unknown problem with the uploading - I'm working on it /Pinting/
-
         headers = {'content-type': mimetypes.guess_type(fileName)[0],
                    'content-length': str(len(stringIO.read()))}
 
         opener = register_openers()
-        request = urllib2.Request('http://localhost:8080/upload?%s' %
-                                  (urllib.urlencode(dict(self.access_token.items() +
+        request = urllib2.Request('%s?%s' % ('%s://%s/upload' % (PROTOCOL, self.config['server']),
+                                             urllib.urlencode(dict(self.access_token.items() +
                                                          dict({'name': fileName}).items()))), stringIO, headers)
-        request.get_method = lambda: 'POST'
-        content = opener.open(request)
 
-        print(content.read())
-        sys.exit()
+        return json.loads((opener.open(request).read()))
 
-    def geturl(self, fileName, short_url = 'false'):
+    def geturl(self, fileName, shortURL = 'false'):
 
         """ Gets back the link of the uploaded file. """
 
-        request = urllib2.Request('%s?%s' % ('%s://%s/share' \
-        % (PROTOCOL, self.config['server']), urllib.urlencode(dict(self.access_token.items() +
-          dict({'name': fileName, 'short': short_url}).items()))))
-          
+        request = urllib2.Request('%s?%s' % ('%s://%s/share' % (PROTOCOL, self.config['server']),
+                                             urllib.urlencode(dict(self.access_token.items() +
+                                                                dict({'name': fileName, 'short': shortURL}).items()))))
+
         return json.loads((urllib2.urlopen(request)).read())
 
 
@@ -449,18 +441,18 @@ class GrabWindow(QWidget):
 
             fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['img_format'])
 
-            # FIXME: There's an unknown problem after the self.session.upload
+            # Move the QPixmap into a cStringIO object
 
             pixmap = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
-            byte_array = QByteArray()
-            buffer = QBuffer(byte_array)
+            byteArray = QByteArray()
+            buffer = QBuffer(byteArray)
             buffer.open(QIODevice.WriteOnly)
             pixmap.save(buffer, self.config['img_format'], self.config['img_quality'])
 
-            string_io = cStringIO.StringIO(byte_array)
-            string_io.seek(0)
+            stringIO = cStringIO.StringIO(byteArray)
+            stringIO.seek(0)
 
-            self.session.upload(string_io, fileName)
+            self.session.upload(stringIO, fileName)
 
             if self.config['direct'] == Qt.Checked:
                 result = self.session.geturl(fileName, 'false')
