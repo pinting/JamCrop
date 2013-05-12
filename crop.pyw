@@ -17,14 +17,14 @@ If you have any advice, please write to us.
 
 
 __author__ = ['Dénes Tornyi', 'Ádam Tajti']
-__version__ = "2.0.3"
+__version__ = "2.0.4"
 
-
-SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
-CONFIG = 'config.json'
-ICON = 'icon.ico'
 PROTOCOL = 'http'
 TIMEOUT = 2.5
+SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
+FORMATS = ['jpg', 'png']
+CONFIG = 'config.json'
+ICON = 'icon.ico'
 
 
 from poster.streaminghttp import register_openers
@@ -125,9 +125,7 @@ class Connection:
         request = urllib2.Request('%s?%s' % ('%s://%s/share' % (PROTOCOL, self.config['server']),
                                              urllib.urlencode(dict(self.access_token.items() +
                                                                 dict({'name': fileName, 'short': shortURL}).items()))))
-
         return json.loads((urllib2.urlopen(request)).read())
-
 
 class Config:
     config = None
@@ -147,14 +145,17 @@ class Config:
                 return int(self.config[key])
             else:
                 return float(self.config[key])
-        except(ValueError, TypeError):
+        except (ValueError, TypeError):
             return self.config[key]
         except:
             raise Exception('Not found!')
 
     def save(self):
-        with open(self.fileName, 'w') as config_file:
-            json.dump(self.config, config_file, indent=4)
+        try:
+            with open(self.fileName, 'w') as config_file:
+                json.dump(self.config, config_file, indent=4)
+        except IOError as error:
+            raise Exception('Cannot write the file (%s)!' % error)
 
 
 class Window(QWidget):
@@ -259,7 +260,7 @@ class SettingsWindow(Window):
         self.status = status
         self.parent = parent
 
-        self.resize(160, 165)
+        self.resize(160, 190)
         self.center()
 
         self.setWindowTitle("Settings")
@@ -268,44 +269,50 @@ class SettingsWindow(Window):
         self.setWindowFlags(Qt.Tool)
         self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
 
-        # Create the automatic URL copy checkbox
+        # Automatic URL copy activator checkbox
 
-        copy = self.check('Automatic URL copy', 7, 5, lambda event: self.change('copy', event))
+        copyBox = self.check('Automatic URL copy', 7, 5, lambda event: self.change('copy', event))
 
         if self.config['copy'] == Qt.Checked:
-            copy.setChecked(True)
+            copyBox.setChecked(True)
 
-        # Create the browser behavior checkbox
+        # Browser activator checkbox
 
-        browser = self.check('Open in the browser', 7, 30, lambda event: self.change('browser', event))
+        browserBox = self.check('Open in the browser', 7, 30, lambda event: self.change('browser', event))
 
         if self.config['browser'] == Qt.Checked:
-            browser.setChecked(True)
+            browserBox.setChecked(True)
 
-        # Create the tooltip behavior checkbox
+        # Notification activator checkbox
 
-        notification = self.check('Show notification', 7, 55, lambda event: self.change('notification', event))
+        notifyBox = self.check('Show notification', 7, 55, lambda event: self.change('notification', event))
 
         if self.config['notification'] == Qt.Checked:
-            notification.setChecked(True)
+            notifyBox.setChecked(True)
 
-        # Create the direct link activator checkbox
+        # Direct link activator checkbox
 
-        short = self.check('Use direct link', 7, 80, lambda event: self.change('direct', event))
+        shortBox = self.check('Use direct link', 7, 80, lambda event: self.change('direct', event))
 
         if self.config['direct'] == Qt.Checked:
-            short.setChecked(True)
+            shortBox.setChecked(True)
 
-        # Create the server list
+        # Format list
 
-        servers = self.combo(6, 105, SERVERS, lambda event: self.change('server', event))
-        servers.setEditText(self.config['server'])
-        servers.resize(148, 22)
+        formatList = self.combo(6, 105, FORMATS, lambda event: self.change('format', event))
+        formatList.setEditText(self.config['format'])
+        formatList.resize(148, 22)
 
-        # Create unlink button
+        # Server list
 
-        unlink = self.button("Unlink client", 5, 130, lambda event: self.unlink(session))
-        unlink.resize(150, 30)
+        serverList = self.combo(6, 130, SERVERS, lambda event: self.change('server', event))
+        serverList.setEditText(self.config['server'])
+        serverList.resize(148, 22)
+
+        # Unlink button
+
+        unlinkBtn = self.button("Unlink client", 5, 155, lambda event: self.unlink(session))
+        unlinkBtn.resize(150, 30)
 
         self.show()
         self.activateWindow()
@@ -439,7 +446,7 @@ class GrabWindow(QWidget):
             self.shape.hide()
             self.hide()
 
-            fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['img_format'])
+            fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['format'])
 
             # Move the QPixmap into a cStringIO object
 
@@ -447,7 +454,7 @@ class GrabWindow(QWidget):
             byteArray = QByteArray()
             buffer = QBuffer(byteArray)
             buffer.open(QIODevice.WriteOnly)
-            pixmap.save(buffer, self.config['img_format'], self.config['img_quality'])
+            pixmap.save(buffer, self.config['format'], self.config['quality'])
 
             stringIO = cStringIO.StringIO(byteArray)
             stringIO.seek(0)
