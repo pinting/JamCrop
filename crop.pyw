@@ -104,7 +104,7 @@ class Connection:
 
         self.config['token'] = None
 
-    def upload(self, stringIO, fileName):
+    def upload(self, stringIO, fileName, attempt = 5):
 
         """ Uploads a file to the server. """
 
@@ -115,8 +115,17 @@ class Connection:
         request = urllib2.Request('%s?%s' % ('%s://%s/upload' % (PROTOCOL, self.config['server']),
                                              urllib.urlencode(dict(self.access_token.items() +
                                                          dict({'name': fileName}).items()))), stringIO, headers)
-
-        return json.loads((opener.open(request).read()))
+        try:
+            return json.loads((opener.open(request).read()))
+        except:
+            if(attempt):
+                time.sleep(1)
+                try:
+                    return self.upload(stringIO, fileName, attempt-1)
+                except:
+                    raise
+            else:
+                raise
 
     def geturl(self, fileName, shortURL = 'false'):
 
