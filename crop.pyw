@@ -61,6 +61,8 @@ class Reference:
 
         self.var = var
 
+# TODO: Rewrite retry decorator, because global variables are evil
+attempt = 5
 
 class Connection:
     request_token = None
@@ -70,16 +72,22 @@ class Connection:
     def __init__(self, config):
         self.config = config
 
-    def __getattr__(self, name):
-        def function(*args):
-            method = getattr(self, '_' + name)
-            if(method):
-                method(*args)
-            else:
-                getattr(self, name)(*args)
+    def retry(source):
+        def function(*args, **kwargs):
+            global attempt
+            print attempt
+            try:
+                return source(*args, **kwargs)
+            except:
+                if(attempt):
+                    time.sleep(1)
+                    attempt = attempt-1
+                    return function(*args, **kwargs)
+                raise
         return function
 
-    def _authorize(self):
+    @retry
+    def authorize(self):
 
         """ Gets a request token. """
 
@@ -87,7 +95,8 @@ class Connection:
         self.request_token = dict(urlparse.parse_qsl(result.read()))
         return self.request_token
 
-    def _access(self):
+    @retry
+    def access(self):
 
         """ Gets an access token, using the request token. """
 
@@ -97,11 +106,10 @@ class Connection:
         self.config['token'] = urllib.urlencode(self.access_token)
         return self.access_token
 
-    def _upload(self, stringIO, fileName, attempt = 5):
+    @retry
+    def upload(self, stringIO, fileName):
 
         """ Uploads a file to the server. """
-
-        print(attempt)
 
         headers = {'content-type': mimetypes.guess_type(fileName)[0],
                    'content-length': str(len(stringIO.read()))}
@@ -110,15 +118,10 @@ class Connection:
         request = urllib2.Request('%s?%s' % ('%s://%s/upload' % (PROTOCOL, self.config['server']),
                                              urllib.urlencode(dict(self.access_token.items() +
                                                          dict({'name': fileName}).items()))), stringIO, headers)
-        try:
-            return json.loads((opener.open(request).read()))
-        except:
-            if(attempt):
-                time.sleep(1)
-                return self._upload(stringIO, fileName, attempt-1)
-            raise
+        return json.loads((opener.open(request).read()))
 
-    def _geturl(self, fileName, shortURL = 'false'):
+    @retry
+    def geturl(self, fileName, shortURL = 'false'):
 
         """ Gets back the link of the uploaded file. """
 
