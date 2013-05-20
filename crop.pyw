@@ -76,7 +76,7 @@ class Connection:
             if(method):
                 method(*args)
             else:
-                getattr(self, '_' + name)(*args)
+                getattr(self, name)(*args)
         return function
 
     def _authorize(self):
