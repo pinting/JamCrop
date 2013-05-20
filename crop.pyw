@@ -70,7 +70,16 @@ class Connection:
     def __init__(self, config):
         self.config = config
 
-    def authorize(self):
+    def __getattr__(self, name):
+        def function(*args):
+            method = getattr(self, '_' + name)
+            if(method):
+                method(*args)
+            else:
+                getattr(self, '_' + name)(*args)
+        return function
+
+    def _authorize(self):
 
         """ Gets a request token. """
 
@@ -78,7 +87,7 @@ class Connection:
         self.request_token = dict(urlparse.parse_qsl(result.read()))
         return self.request_token
 
-    def access(self):
+    def _access(self):
 
         """ Gets an access token, using the request token. """
 
@@ -87,6 +96,36 @@ class Connection:
         self.access_token = dict(urlparse.parse_qsl(result.read()))
         self.config['token'] = urllib.urlencode(self.access_token)
         return self.access_token
+
+    def _upload(self, stringIO, fileName, attempt = 5):
+
+        """ Uploads a file to the server. """
+
+        print(attempt)
+
+        headers = {'content-type': mimetypes.guess_type(fileName)[0],
+                   'content-length': str(len(stringIO.read()))}
+
+        opener = register_openers()
+        request = urllib2.Request('%s?%s' % ('%s://%s/upload' % (PROTOCOL, self.config['server']),
+                                             urllib.urlencode(dict(self.access_token.items() +
+                                                         dict({'name': fileName}).items()))), stringIO, headers)
+        try:
+            return json.loads((opener.open(request).read()))
+        except:
+            if(attempt):
+                time.sleep(1)
+                return self._upload(stringIO, fileName, attempt-1)
+            raise
+
+    def _geturl(self, fileName, shortURL = 'false'):
+
+        """ Gets back the link of the uploaded file. """
+
+        request = urllib2.Request('%s?%s' % ('%s://%s/share' % (PROTOCOL, self.config['server']),
+                                             urllib.urlencode(dict(self.access_token.items() +
+                                                                dict({'name': fileName, 'short': shortURL}).items()))))
+        return json.loads((urllib2.urlopen(request)).read())
 
     def load(self):
 
@@ -103,38 +142,6 @@ class Connection:
         """ Deletes the token from the config. """
 
         self.config['token'] = None
-
-    def upload(self, stringIO, fileName, attempt = 5):
-
-        """ Uploads a file to the server. """
-
-        headers = {'content-type': mimetypes.guess_type(fileName)[0],
-                   'content-length': str(len(stringIO.read()))}
-
-        opener = register_openers()
-        request = urllib2.Request('%s?%s' % ('%s://%s/upload' % (PROTOCOL, self.config['server']),
-                                             urllib.urlencode(dict(self.access_token.items() +
-                                                         dict({'name': fileName}).items()))), stringIO, headers)
-        try:
-            return json.loads((opener.open(request).read()))
-        except:
-            if(attempt):
-                time.sleep(1)
-                try:
-                    return self.upload(stringIO, fileName, attempt-1)
-                except:
-                    raise
-            else:
-                raise
-
-    def geturl(self, fileName, shortURL = 'false'):
-
-        """ Gets back the link of the uploaded file. """
-
-        request = urllib2.Request('%s?%s' % ('%s://%s/share' % (PROTOCOL, self.config['server']),
-                                             urllib.urlencode(dict(self.access_token.items() +
-                                                                dict({'name': fileName, 'short': shortURL}).items()))))
-        return json.loads((urllib2.urlopen(request)).read())
 
 class Config:
     config = None
