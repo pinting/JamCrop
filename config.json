@@ -1,10 +1,10 @@
 {
     "format": "jpg", 
-    "notification": "0", 
-    "direct": "0", 
+    "notification": "2", 
+    "direct": "2", 
     "server": "jamcropxy.appspot.com", 
-    "token": "oauth_token_secret=84hrbczthurnj9z&oauth_token=nvtl3q0fp4qux86&uid=4213669", 
-    "copy": "0", 
+    "token": "oauth_token_secret=iod5swzawroq977&oauth_token=5xerdouiu6os9dd&uid=4213669", 
+    "copy": "2", 
     "quality": "80", 
-    "browser": "0"
+    "browser": "2"
 }

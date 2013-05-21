@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
+
 """
 JamCrop
 
@@ -8,16 +9,26 @@ If you have any advice, please write to us.
 - Google Code: https://code.google.com/p/jamcrop/
 """
 
+
 __author__ = ['Dénes Tornyi', 'Ádam Tajti']
 __version__ = "2.0.4"
 
+
+# Network protocol (http or https)
 PROTOCOL = 'http'
+# Notification timeout
 TIMEOUT = 2.5
+# Content of the server list in settings
 SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
+# Possible formats
 FORMATS = ['jpg', 'png']
+# Config file
 CONFIG = 'config.json'
-ICON = 'icon.ico'
+# Maximum amount of retry
 RETRY = 5
+# Icon of the application
+ICON = 'icon.ico'
+
 
 from poster.streaminghttp import register_openers
 from PyQt4.QtCore import *
@@ -163,6 +174,8 @@ class Config:
             else:
                 return float(self.config[key])
         except (ValueError, TypeError):
+            if self.config[key] == 'None':
+                return None
             return self.config[key]
         except:
             raise Exception('Not found!')
@@ -170,9 +183,9 @@ class Config:
     def save(self):
         try:
             with open(self.fileName, 'w') as config_file:
-                json.dump(self.config, config_file, indent=4)
+                json.dump(self.config, config_file, indent = 4)
         except IOError as error:
-            raise Exception('Cannot write the file (%s)!' % error)
+            raise IOError('Cannot write the config (%s)!' % error)
 
 
 class Window(QWidget):
@@ -259,7 +272,7 @@ class Window(QWidget):
 
 
 class Notification(QSystemTrayIcon):
-    def __init__(self, title, msg, icon, parent = None):
+    def __init__(self, title, msg, icon = ICON, parent = None):
         QSystemTrayIcon.__init__(self, parent)
         self.setIcon(QIcon(icon))
         self.show()
@@ -385,9 +398,14 @@ class GrabWindow(QWidget):
         self.session = Connection(self.config)
 
         if not self.session.load():
-            request_token = self.session.authorize()
+            request_token = error((urllib2.URLError), self.session.authorize)
+            if(request_token is True):
+                self.alert = Notification("JamCrop", "The server in unavailable!")
+                time.sleep(TIMEOUT)
+                self.alert.hide()
+                sys.exit(-1)
             webbrowser.open("%s%s?%s" % (PROTOCOL, "://www.dropbox.com/1/oauth/authorize",
-                                       urllib.urlencode({'oauth_token': request_token['oauth_token']})))
+                                         urllib.urlencode({'oauth_token': request_token['oauth_token']})))
 
             reply = QMessageBox.question(self, "JamCrop", "The JamCrop requires a limited Dropbox "
                                                           "access for itself. If you allowed the "
@@ -396,12 +414,12 @@ class GrabWindow(QWidget):
                                                           "OK button. After the grab window have appeared, "
                                                           "you can open settings by pressing [F1].",
                                          QMessageBox.Ok | QMessageBox.Cancel, QMessageBox.Cancel)
-
-            if reply == QMessageBox.Ok:
-                self.session.access()
-            else:
-                self.closeEvent(None)
-                sys.exit()
+            if reply != QMessageBox.Ok or error((urllib2.URLError), self.session.access) is True:
+                if reply == QMessageBox.Ok:
+                    self.alert = Notification("JamCrop", "The server in unavailable!")
+                    time.sleep(TIMEOUT)
+                    self.alert.hide()
+                sys.exit(-1)
 
         self.activateWindow()
         self.show()
@@ -466,7 +484,6 @@ class GrabWindow(QWidget):
             fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['format'])
 
             # Move the QPixmap into a cStringIO object
-
             pixmap = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
             byteArray = QByteArray()
             buffer = QBuffer(byteArray)
@@ -476,29 +493,43 @@ class GrabWindow(QWidget):
             stringIO = cStringIO.StringIO(byteArray)
             stringIO.seek(0)
 
+            # Upload the screenshot
             if error((urllib2.URLError), self.session.upload, stringIO, fileName) is True:
-                self.alert = Notification("JamCrop", "Error in uploading!", ICON)
+                self.alert = Notification("JamCrop", "Error in uploading!")
                 time.sleep(TIMEOUT)
                 self.alert.hide()
+                self.closeEvent(None)
                 sys.exit(-1)
 
-            if self.config['direct'] == Qt.Checked:
-                result = self.session.geturl(fileName, 'false')
-                result['url'] += '?dl=1'
-            else:
-                result = self.session.geturl(fileName, 'true')
+            # Get the URL of the screenshot if it is needed
+            if self.config['copy'] or self.config['browser']:
+                try:
+                    if self.config['direct'] == Qt.Checked:
+                        result = self.session.geturl(fileName, 'false')
+                        result['url'] += '?dl=1'
+                    else:
+                        result = self.session.geturl(fileName, 'true')
+                except urllib2.URLError:
+                    self.alert = Notification("JamCrop", "Error in sharing!")
+                    time.sleep(TIMEOUT)
+                    self.alert.hide()
+                    self.closeEvent(None)
+                    sys.exit(-1)
 
-            if self.config['copy'] == Qt.Checked:
+            # Copy the URL to the clipboard
+            if self.config['copy']:
                 pyperclip.copy(result['url'])
 
-            if self.config['browser'] == Qt.Checked:
+            # Open the URL in the browser
+            if self.config['browser']:
                 webbrowser.open(result['url'])
 
-            if self.config['notification'] == Qt.Checked:
+            # Notify the user about the successful upload
+            if self.config['notification']:
                 msg = "Your screenshot is uploaded!"
-                if self.config['copy'] == Qt.Checked:
+                if self.config['copy']:
                     msg += "\nIt's on your clipboard!"
-                self.alert = Notification("JamCrop", msg, ICON)
+                self.alert = Notification("JamCrop", msg)
                 time.sleep(TIMEOUT)
                 self.alert.hide()
 
@@ -513,10 +544,12 @@ def error(name, function, *args, **kwargs):
     except name:
         return True
 
+
 def main():
     app = QApplication(sys.argv)
     crop = GrabWindow()
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     main()
