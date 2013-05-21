@@ -4,17 +4,9 @@
 """
 JamCrop
 
-Takes and uploads screenshot into supported services.
-The main idea, is that we want to take screenshots, and upload
-them to wherever we want them, and get back the direct link to
-it as fast as we can. This application is made for those who
-likes to take screenshots often, and share them with their
-friends.
-
 If you have any advice, please write to us.
 - Google Code: https://code.google.com/p/jamcrop/
 """
-
 
 __author__ = ['Dénes Tornyi', 'Ádam Tajti']
 __version__ = "2.0.4"
@@ -25,12 +17,13 @@ SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
 FORMATS = ['jpg', 'png']
 CONFIG = 'config.json'
 ICON = 'icon.ico'
-
+RETRY = 5
 
 from poster.streaminghttp import register_openers
 from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 import webbrowser
+import functools
 import pyperclip
 import mimetypes
 import cStringIO
@@ -61,8 +54,6 @@ class Reference:
 
         self.var = var
 
-# TODO: Rewrite retry decorator, because global variables are evil
-attempt = 5
 
 class Connection:
     request_token = None
@@ -72,19 +63,25 @@ class Connection:
     def __init__(self, config):
         self.config = config
 
-    def retry(source):
-        def function(*args, **kwargs):
-            global attempt
-            print attempt
+    class retry(object):
+        method = None
+        attempt = RETRY
+
+        def __init__(self, method):
+            self.method = method
+
+        def __get__(self, *obj):
+            return functools.partial(self.__call__, obj[0])
+
+        def __call__(self, *args, **kwargs):
             try:
-                return source(*args, **kwargs)
+                return self.method(*args, **kwargs)
             except:
-                if(attempt):
+                if(self.attempt):
                     time.sleep(1)
-                    attempt = attempt-1
-                    return function(*args, **kwargs)
+                    self.attempt -= 1
+                    return self.__call__(*args, **kwargs)
                 raise
-        return function
 
     @retry
     def authorize(self):
@@ -145,6 +142,7 @@ class Connection:
         """ Deletes the token from the config. """
 
         self.config['token'] = None
+
 
 class Config:
     config = None
@@ -478,7 +476,11 @@ class GrabWindow(QWidget):
             stringIO = cStringIO.StringIO(byteArray)
             stringIO.seek(0)
 
-            self.session.upload(stringIO, fileName)
+            if error((urllib2.URLError), self.session.upload, stringIO, fileName) is True:
+                self.alert = Notification("JamCrop", "Error in uploading!", ICON)
+                time.sleep(TIMEOUT)
+                self.alert.hide()
+                sys.exit(-1)
 
             if self.config['direct'] == Qt.Checked:
                 result = self.session.geturl(fileName, 'false')
@@ -505,11 +507,16 @@ class GrabWindow(QWidget):
         QWidget.mouseReleaseEvent(self, event)
 
 
+def error(name, function, *args, **kwargs):
+    try:
+        return function(*args, **kwargs)
+    except name:
+        return True
+
 def main():
     app = QApplication(sys.argv)
     crop = GrabWindow()
     sys.exit(app.exec_())
-
 
 if __name__ == '__main__':
     main()
