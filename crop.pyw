@@ -75,6 +75,9 @@ class Connection:
         self.config = config
 
     class retry(object):
+
+        """ Retry decorator for the Connection class functions. """
+
         method = None
         attempt = RETRY
 
@@ -156,6 +159,9 @@ class Connection:
 
 
 class Config:
+
+    """ Config class used to read and write JSON data. """
+
     config = None
     fileName = None
 
@@ -170,12 +176,16 @@ class Config:
     def __getitem__(self, key):
         try:
             if isinstance(self.config[key], int):
+                # If it is Integer
                 return int(self.config[key])
             else:
+                # If it is Float/Double
                 return float(self.config[key])
         except (ValueError, TypeError):
             if self.config[key] == 'None':
+                # If it is None
                 return None
+            # If it is String
             return self.config[key]
         except:
             raise Exception('Not found!')
@@ -243,7 +253,7 @@ class Window(QWidget):
     def check(self, msg, x, y, action = False):
 
         """ Creates a new checkbox.
-        :param action: An action to take when the checkbox's state changes.
+        :param action: An action to take when the state of the checkbox changes.
         """
 
         check = QCheckBox(msg, self)
@@ -257,7 +267,7 @@ class Window(QWidget):
     def combo(self, x, y, values, action = False):
 
         """ Creates a new combobox.
-        :param action: An action to take when the combobox's text changes.
+        :param action: An action to take when the text of the combobox changes.
         """
 
         combo = QComboBox(self)
@@ -277,7 +287,6 @@ class Notification(QSystemTrayIcon):
         self.setIcon(QIcon(icon))
         self.show()
         self.showMessage(title, msg)
-
 
 class SettingsWindow(Window):
     session = None
@@ -444,7 +453,7 @@ class GrabWindow(QWidget):
 
     def keyPressEvent(self, event):
 
-        """ Keypress Event Handler. """
+        """ Keypress event handler. """
 
         if event.key() == Qt.Key_F1:
             self.settings = SettingsWindow(self, self.session, self.config, self.disabled)
@@ -483,7 +492,7 @@ class GrabWindow(QWidget):
 
             fileName = "%s.%s" % (str(time.strftime('%Y_%m_%d_%H_%M_%S')), self.config['format'])
 
-            # Move the QPixmap into a cStringIO object
+            # Moves the QPixmap into a cStringIO object
             pixmap = QPixmap.grabWindow(QApplication.desktop().winId()).copy(self.shape.geometry())
             byteArray = QByteArray()
             buffer = QBuffer(byteArray)
@@ -493,15 +502,15 @@ class GrabWindow(QWidget):
             stringIO = cStringIO.StringIO(byteArray)
             stringIO.seek(0)
 
-            # Upload the screenshot
+            # Uploads the screenshot
             if error((urllib2.URLError), self.session.upload, stringIO, fileName) is True:
-                self.alert = Notification("JamCrop", "Error in uploading!")
+                self.alert = Notification("JamCrop", "An error occurred in the uploading!")
                 time.sleep(TIMEOUT)
                 self.alert.hide()
                 self.closeEvent(None)
                 sys.exit(-1)
 
-            # Get the URL of the screenshot if it is needed
+            # Gets the URL of the screenshot if it is needed
             if self.config['copy'] or self.config['browser']:
                 try:
                     if self.config['direct'] == Qt.Checked:
@@ -510,25 +519,25 @@ class GrabWindow(QWidget):
                     else:
                         result = self.session.geturl(fileName, 'true')
                 except urllib2.URLError:
-                    self.alert = Notification("JamCrop", "Error in sharing!")
+                    self.alert = Notification("JamCrop", "An error occurred while trying to get the URL!")
                     time.sleep(TIMEOUT)
                     self.alert.hide()
                     self.closeEvent(None)
                     sys.exit(-1)
 
-            # Copy the URL to the clipboard
+            # Copies the URL to the clipboard
             if self.config['copy']:
                 pyperclip.copy(result['url'])
 
-            # Open the URL in the browser
+            # Opens the URL in the browser
             if self.config['browser']:
                 webbrowser.open(result['url'])
 
-            # Notify the user about the successful upload
+            # Notifies the user about the successful upload
             if self.config['notification']:
                 msg = "Your screenshot is uploaded!"
                 if self.config['copy']:
-                    msg += "\nIt's on your clipboard!"
+                    msg += "\nIt is on your clipboard!"
                 self.alert = Notification("JamCrop", msg)
                 time.sleep(TIMEOUT)
                 self.alert.hide()
@@ -539,6 +548,14 @@ class GrabWindow(QWidget):
 
 
 def error(name, function, *args, **kwargs):
+
+    """ Error handling helping function
+    :param name: Tuple list of the excepting errors
+    :param function: Name of the functions
+    :param args: Normals arguments of the named functions
+    :param kwargs: Keyword arguments
+    """
+
     try:
         return function(*args, **kwargs)
     except name:
