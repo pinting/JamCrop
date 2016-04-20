@@ -2,14 +2,6 @@
 #-*- coding: utf-8 -*-
 
 
-"""
-JamCrop
-
-If you have any advice, please write to us.
-- Google Code: https://code.google.com/p/jamcrop/
-"""
-
-
 __author__ = ['Dénes Tornyi', 'Ádam Tajti']
 __version__ = "2.0.4"
 
@@ -19,7 +11,7 @@ PROTOCOL = 'http'
 # Notification timeout
 TIMEOUT = 2.5
 # Content of the server list in settings
-SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
+SERVERS = ['jamcropxy.appspot.com']
 # Possible formats
 FORMATS = ['jpg', 'png']
 # Config file
