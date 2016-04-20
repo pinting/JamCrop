@@ -1,26 +1,13 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
 
-"""
-JamCrop
-
-Takes and uploads screenshot into supported services.
-The main idea, is that we want to take screenshots, and upload
-them to wherever we want them, and get back the direct link to
-it as fast as we can. This application is made for those who
-likes to take screenshots often, and share them with their
-friends.
-
-If you have any advice, please write to us.
-- Google Code: https://code.google.com/p/jamcrop/
-"""
 
 __author__ = ["Dénes Tornyi"]
-__version__ = "1.2.0" # This major version is abandoned: use 2.x.x instead
+__version__ = "1.2.0"
 
 
 PROTOCOL = 'https'
-SERVERS = ['jamcropxy.appspot.com', 'jamcropxy-pinting.rhcloud.com']
+SERVERS = ['jamcropxy.appspot.com']
 FORMATS = ['jpg', 'png']
 TIMEOUT = 2500
 CONFIG = 'config.xml'
