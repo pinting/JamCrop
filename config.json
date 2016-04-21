@@ -3,7 +3,7 @@
     "notification": "0", 
     "direct": "0", 
     "server": "jamcropxy.appspot.com", 
-    "token": null, 
+    "token": "None", 
     "copy": "0", 
     "quality": "80", 
     "browser": "0"
